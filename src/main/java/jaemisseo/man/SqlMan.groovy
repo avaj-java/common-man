@@ -262,10 +262,9 @@ class SqlMan extends SqlAnalMan{
 
     void runSql(SqlSetup localOpt, List<SqlObject> analysisResultList){
         connect(localOpt)
-        int barSize = 20
         sql.withTransaction{
             println "Executing Sqls..."
-            Util.eachWithProgressBar(analysisResultList, barSize){ SqlObject result ->
+            Util.eachWithProgressBar(analysisResultList, 20){ SqlObject result, int i ->
                 try{
                     String query = result.query
                     sql.execute(removeLastSemicoln(removeLastSlash(query)))
