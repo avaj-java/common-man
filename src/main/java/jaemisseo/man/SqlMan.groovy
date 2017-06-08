@@ -284,8 +284,15 @@ class SqlMan extends SqlAnalMan{
 
 
     void createReport(List<SqlObject> results){
+        //Option
+        List optionList = []
+        connectedOpt.eachFieldName {
+            if (connectedOpt[it])
+                optionList << "${it}=${connectedOpt[it]}"
+        }
+        //Collect Rpoert
         this.resultReportMap = [
-                sqlInfo     :connectedOpt.toString(),
+                sqlInfo     :optionList.join(' | '),
                 pattern     :patternToGetQuery,
                 matchedCnt  :results.size(),
                 succeededCnt:results.findAll{ it.isOk }.size(),
