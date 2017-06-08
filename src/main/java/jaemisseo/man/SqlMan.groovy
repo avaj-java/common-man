@@ -334,18 +334,8 @@ class SqlMan extends SqlAnalMan{
         if (resultReportMap){
             println ""
             println ""
-            println "<SQL REPORT>"
-
-            if (resultReportMap.sqlInfo){
-                println "---------------"
-                SqlSetup sqlInfo = resultReportMap.sqlInfo
-                sqlInfo.eachFieldName{ fieldName ->
-                    if (sqlInfo[fieldName])
-                        print "${fieldName}=${sqlInfo[fieldName]} | "
-                }
-            }
-            println "---------------"
-            resultReportMap.findAll{ it.key != 'sqlInfo' || it.key != 'summary' }.each{
+            println "<REPORT>"
+            resultReportMap.findAll{ it.key != 'summary' }.each{
                 println it
             }
 
