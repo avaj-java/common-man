@@ -2,6 +2,7 @@ package jaemisseo.man
 
 import groovy.sql.Sql
 import jaemisseo.man.util.SqlSetup
+import jaemisseo.man.util.Util
 
 import java.sql.SQLException
 import java.util.regex.Matcher
@@ -168,55 +169,61 @@ class SqlMan extends SqlAnalMan{
     }
 
     SqlMan checkBefore(SqlSetup localOpt){
-        def existObjectList
-        def existTablespaceList
-        def existUserList
-        def resultsForTablespace = analysisResultList.findAll{ it.commandType.equalsIgnoreCase("CREATE") && it.objectType.equalsIgnoreCase("TABLESPACE") }
-        def resultsForUser = analysisResultList.findAll{ it.commandType.equalsIgnoreCase("CREATE") && it.objectType.equalsIgnoreCase("USER") }
-        // Second Analysis
         try {
+            def existObjectList
+            def existTablespaceList
+            def existUserList
             connect(localOpt)
+
+            // Analysis -
             existObjectList = sql.rows("SELECT OBJECT_NAME, OBJECT_TYPE, OWNER AS SCHEME FROM ALL_OBJECTS")
-            analysisResultList.each {
-                it.isExistOnDB = isExistOnSchemeOnDB(it, existObjectList)
-                if (it.isExistOnDB){
-                    if ( !(it.commandType.equalsIgnoreCase('INSERT') || it.commandType.equalsIgnoreCase('UPDATE')) )
-                        it.warnningMessage = WARN_MSG_2
-                }else{
-//                    println "${it.objectName} / ${it.objectType}"
-                    if (it.objectType.equalsIgnoreCase('TABLE')){
-                        if (it.commandType.equalsIgnoreCase('INSERT')
-                        || it.commandType.equalsIgnoreCase('UPDATE')
-                        || it.commandType.equalsIgnoreCase('DELETE')
-                        || it.commandType.equalsIgnoreCase('COMMENT')){
-                            it.warnningMessage = WARN_MSG_1
-                        }
-                    }
+
+            //Check Exist
+            println 'Check OBJECT...'
+            Util.eachWithProgressBar(analysisResultList, 20){ SqlObject obj, int i ->
+                obj.isExistOnDB = isExistOnSchemeOnDB(obj, existObjectList)
+                if (obj.isExistOnDB) {
+                    //Already exist object!
+                    if (!containsIgnoreCase(['INSERT', 'UPDATE'], obj.commandType))
+                        obj.warnningMessage = WARN_MSG_2
+                } else {
+                    //Does not exist!
+                    if (obj.objectType.equalsIgnoreCase('TABLE') && containsIgnoreCase(['INSERT', 'UPDATE', 'DELETE', 'COMMENT'], obj.commandType))
+                        obj.warnningMessage = WARN_MSG_1
                 }
             }
+
+            //Check Exist TableSpace
+            def resultsForTablespace = analysisResultList.findAll{ it.commandType.equalsIgnoreCase("CREATE") && it.objectType.equalsIgnoreCase("TABLESPACE") }
             if (resultsForTablespace) {
+                println 'Check TABLESPACE...'
                 existTablespaceList = sql.rows("SELECT TABLESPACE_NAME AS OBJECT_NAME, 'TABLESPACE' AS OBJECT_TYPE FROM USER_TABLESPACES")
-                resultsForTablespace.each {
-                    it.isExistOnDB = isExistOnDB(it, existTablespaceList)
-                    if (it.isExistOnDB)
-                        it.warnningMessage = WARN_MSG_2
+                resultsForTablespace.each { SqlObject obj ->
+                    obj.isExistOnDB = isExistOnDB(obj, existTablespaceList)
+                    if (obj.isExistOnDB)
+                        obj.warnningMessage = WARN_MSG_2
                 }
             }
+
+            //Check Exist User
+            def resultsForUser = analysisResultList.findAll{ it.commandType.equalsIgnoreCase("CREATE") && it.objectType.equalsIgnoreCase("USER") }
             if (resultsForUser){
+                println 'Check USER...'
                 existUserList = sql.rows("SELECT USERNAME AS OBJECT_NAME, 'USER' AS OBJECT_TYPE FROM ALL_USERS")
-                resultsForUser.each {
-                    it.isExistOnDB = isExistOnDB(it, existUserList)
-                    if (it.isExistOnDB)
-                        it.warnningMessage = WARN_MSG_2
+                resultsForUser.each { SqlObject obj ->
+                    obj.isExistOnDB = isExistOnDB(obj, existUserList)
+                    if (obj.isExistOnDB)
+                        obj.warnningMessage = WARN_MSG_2
                 }
             }
+
         }catch(Exception e){
             e.printStackTrace()
             throw e
         }finally{
             close()
         }
-        
+
         //Error Check
         List warnList = analysisResultList.findAll{ it.warnningMessage }
         if ( !localOpt.modeSqlIgnoreErrorCheckBefore && warnList )
@@ -244,19 +251,21 @@ class SqlMan extends SqlAnalMan{
 
 
     List<SqlObject> getAnalysisResultList(Matcher m){
-        def results = []
-        // First Analysis
-        m.eachWithIndex { String query, int index ->
-            results << getReplacedObject(getAnalysisObject(query), connectedOpt, index+1)
+        def resultList = []
+        println "Replace Object Name..."
+        Util.eachWithProgressBar( (m.findAll() as List), 20) { String query, int i ->
+            resultList << getReplacedObject(getAnalysisObject(query), connectedOpt, i + 1)
         }
-        return results
+        return resultList
     }
 
 
     void runSql(SqlSetup localOpt, List<SqlObject> analysisResultList){
         connect(localOpt)
+        int barSize = 20
         sql.withTransaction{
-            analysisResultList.eachWithIndex{ SqlObject result, int idx ->
+            println "Executing Sqls..."
+            Util.eachWithProgressBar(analysisResultList, barSize){ SqlObject result ->
                 try{
                     String query = result.query
                     sql.execute(removeLastSemicoln(removeLastSlash(query)))
@@ -445,12 +454,10 @@ class SqlMan extends SqlAnalMan{
 
 
     boolean isExistOnDB(def result, def objectList){
-        boolean isExist
         def equalList = objectList.findAll{ Map<String, String> row ->
             return row["OBJECT_NAME"].equalsIgnoreCase(result.objectName) && row["OBJECT_TYPE"].equalsIgnoreCase(result.objectType)
         }
-        isExist = (equalList) ? true : false
-        return isExist
+        return (equalList) ? true : false
     }
 
     boolean isExistOnSchemeOnDB(SqlObject sqlObj, def catalogList){
@@ -510,6 +517,13 @@ class SqlMan extends SqlAnalMan{
 //        && (createTableWarningCnt || createIndexWarningCnt || createViewWarningCnt || createSequenceWarningCnt || createFunctionWarningCnt || insertWarningCnt || updateWarningCnt)){
     }
 
+
+
+
+    boolean containsIgnoreCase(List<String> targetList, String compareItem){
+        List foundedList = targetList.findAll{ it.equalsIgnoreCase(compareItem) }
+        return !!foundedList
+    }
 
 }
 
