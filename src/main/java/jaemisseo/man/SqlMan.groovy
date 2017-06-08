@@ -196,7 +196,7 @@ class SqlMan extends SqlAnalMan{
             //Check Exist TableSpace
             def resultsForTablespace = analysisResultList.findAll{ it.commandType.equalsIgnoreCase("CREATE") && it.objectType.equalsIgnoreCase("TABLESPACE") }
             if (resultsForTablespace) {
-                println 'Check TABLESPACE...'
+                println ' - Check TABLESPACE...'
                 existTablespaceList = sql.rows("SELECT TABLESPACE_NAME AS OBJECT_NAME, 'TABLESPACE' AS OBJECT_TYPE FROM USER_TABLESPACES")
                 resultsForTablespace.each { SqlObject obj ->
                     obj.isExistOnDB = isExistOnDB(obj, existTablespaceList)
@@ -208,7 +208,7 @@ class SqlMan extends SqlAnalMan{
             //Check Exist User
             def resultsForUser = analysisResultList.findAll{ it.commandType.equalsIgnoreCase("CREATE") && it.objectType.equalsIgnoreCase("USER") }
             if (resultsForUser){
-                println 'Check USER...'
+                println ' - Check USER...'
                 existUserList = sql.rows("SELECT USERNAME AS OBJECT_NAME, 'USER' AS OBJECT_TYPE FROM ALL_USERS")
                 resultsForUser.each { SqlObject obj ->
                     obj.isExistOnDB = isExistOnDB(obj, existUserList)
@@ -327,11 +327,28 @@ class SqlMan extends SqlAnalMan{
         if (resultReportMap){
             println ""
             println ""
-            println "///// REPORT"
-            resultReportMap.each{
-                println ""
+            println "<SQL REPORT>"
+
+            if (resultReportMap.sqlInfo){
+                println "---------------"
+                SqlSetup sqlInfo = resultReportMap.sqlInfo
+                sqlInfo.eachFieldName{ fieldName ->
+                    if (sqlInfo[fieldName])
+                        print "${fieldName}=${sqlInfo[fieldName]} | "
+                }
+            }
+            println "---------------"
+            resultReportMap.findAll{ it.key != 'sqlInfo' || it.key != 'summary' }.each{
                 println it
             }
+
+            if (resultReportMap.summary){
+                println "---------------"
+                resultReportMap.summary.each{
+                    println "${it}"
+                }
+            }
+
             println ""
             println ""
             println ""
