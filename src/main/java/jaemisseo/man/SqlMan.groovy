@@ -337,15 +337,23 @@ class SqlMan extends SqlAnalMan{
             println ""
             println ""
             println "<REPORT>"
-            resultReportMap.findAll{ it.key != 'summary' }.each{
-                println "${it.key.toString().toUpperCase()}"
-                println "   - ${it.value}"
+            Map mainReportMap = resultReportMap.findAll{ it.key != 'summary' }
+            Map summaryReportMap = resultReportMap.summary
+            if (mainReportMap){
+                println "---------------"
+                int longestStringLength = Util.getLongestLength(mainReportMap.keySet().toList())
+                mainReportMap.each{
+                    String spacesToLineUp = Util.getSpacesToLineUp(longestStringLength)
+                    println "${it.key.toString().toUpperCase()}:${spacesToLineUp} ${it.value}"
+                }
             }
 
-            if (resultReportMap.summary){
+            if (summaryReportMap){
                 println "---------------"
-                resultReportMap.summary.each{
-                    println "${it}"
+                int longestStringLength = Util.getLongestLength(summaryReportMap.keySet().toList())
+                summaryReportMap.each{
+                    String spacesToLineUp = Util.getSpacesToLineUp(longestStringLength)
+                    println "${it.key}:${spacesToLineUp} ${it.value}"
                 }
             }
 
@@ -442,7 +450,7 @@ class SqlMan extends SqlAnalMan{
                         o: createUserList.findAll{ it.isOk }.size(),
                         x: createUserList.findAll{ !it.isOk }.size()
                 ],
-                'alterList':[
+                'alter':[
                         all: alterList.size(),
                         o: alterList.findAll{ it.isOk }.size(),
                         x: alterList.findAll{ !it.isOk }.size()
