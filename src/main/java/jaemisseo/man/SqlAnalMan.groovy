@@ -87,6 +87,7 @@ class SqlAnalMan {
             ";" : "${sp};",
             "\n" : sp,
             "\r" : sp,
+            "\t" : sp,
             " " : sp
         ])
         sqlObj.with{
@@ -226,10 +227,13 @@ class SqlAnalMan {
     }
 
 
+
+    /*************************
+     *  CREATE
+     *************************/
     SqlObject analCreate(SqlObject obj){
         List<String> words = obj.arrayToCompare
         String objectType = getObjectType(obj.query)
-
         words.eachWithIndex{ String word, int idx ->
             word = word.toUpperCase()
             if (!obj.objectTypeIdx && word.equalsIgnoreCase(objectType)){
@@ -335,6 +339,11 @@ class SqlAnalMan {
         return analObjectName(obj)
     }
 
+
+
+    /*************************
+     *  ALTER
+     *************************/
     SqlObject analAlter(SqlObject obj){
         List<String> words = obj.arrayToCompare
         obj.objectTypeIdx = 1
@@ -415,6 +424,11 @@ class SqlAnalMan {
         return analObjectName(obj)
     }
 
+
+
+    /*************************
+     *  INSERT
+     *************************/
     SqlObject analInsert(SqlObject obj){
         List<String> words = obj.arrayToCompare
         obj.objectType = 'TABLE'
@@ -454,6 +468,11 @@ class SqlAnalMan {
         return analObjectName(obj)
     }
 
+
+
+    /*************************
+     *  UPDATE
+     *************************/
     SqlObject analUpdate(SqlObject obj){
         List<String> words = obj.arrayToCompare
         obj.objectType = 'TABLE'
@@ -492,6 +511,11 @@ class SqlAnalMan {
         return analObjectName(obj)
     }
 
+
+
+    /*************************
+     *  COMMENT
+     *************************/
     SqlObject analComment(SqlObject obj){
         List<String> words = obj.arrayToCompare
         words.eachWithIndex{ String word, int idx ->
@@ -522,6 +546,11 @@ class SqlAnalMan {
         return obj
     }
 
+
+
+    /*************************
+     *  GRANT
+     *************************/
     SqlObject analGrant(SqlObject obj){
         List<String> words = obj.arrayToCompare
         obj.objectType = 'USER'
@@ -533,6 +562,8 @@ class SqlAnalMan {
         }
         return analObjectName(obj)
     }
+
+
 
     SqlObject analObjectName(SqlObject obj){
         String objectName = obj.arrayToCompare[obj.objectNameIdx]
