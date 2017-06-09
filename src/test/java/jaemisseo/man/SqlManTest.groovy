@@ -28,7 +28,10 @@ class SqlManTest {
     void simpleTest(){
         SqlMan sqlman = new SqlMan()
         String filePath = ''
-        SqlSetup sqlSetup = new SqlSetup(ip:'localhost', port:'1521', vendor:'oracle', db:'orcl', user:'META_SANGBEOM', password:'META_SANGBEOM')
+        SqlSetup sqlSetup = new SqlSetup(
+                ip:'localhost', port:'1521', vendor:'oracle', db:'orcl', user:'META_SANGBEOM', password:'META_SANGBEOM',
+                replaceUser: 'META_INSTALLER_TEST'
+        )
 
         sqlman.init()
                 .queryFromFile(filePath)
@@ -36,6 +39,7 @@ class SqlManTest {
                 .replace(sqlSetup)
                 .checkBefore(sqlSetup)
 
+        sqlman.reportAnalysis()
     }
 
 

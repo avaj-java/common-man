@@ -102,6 +102,7 @@ class SocketManTest {
 
 
     @Test
+    @Ignore
     void "간단한 메세지 전송"(){
         if (true) return
 

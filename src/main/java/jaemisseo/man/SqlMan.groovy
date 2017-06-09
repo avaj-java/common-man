@@ -196,25 +196,27 @@ class SqlMan extends SqlAnalMan{
             //Check Exist TableSpace
             def resultsForTablespace = analysisResultList.findAll{ it.commandType.equalsIgnoreCase("CREATE") && it.objectType.equalsIgnoreCase("TABLESPACE") }
             if (resultsForTablespace) {
-                println ' - Check TABLESPACE...'
+                print ' - Check TABLESPACE...'
                 existTablespaceList = sql.rows("SELECT TABLESPACE_NAME AS OBJECT_NAME, 'TABLESPACE' AS OBJECT_TYPE FROM USER_TABLESPACES")
                 resultsForTablespace.each { SqlObject obj ->
                     obj.isExistOnDB = isExistOnDB(obj, existTablespaceList)
                     if (obj.isExistOnDB)
                         obj.warnningMessage = WARN_MSG_2
                 }
+                println ' DONE'
             }
 
             //Check Exist User
             def resultsForUser = analysisResultList.findAll{ it.commandType.equalsIgnoreCase("CREATE") && it.objectType.equalsIgnoreCase("USER") }
             if (resultsForUser){
-                println ' - Check USER...'
+                print ' - Check USER...'
                 existUserList = sql.rows("SELECT USERNAME AS OBJECT_NAME, 'USER' AS OBJECT_TYPE FROM ALL_USERS")
                 resultsForUser.each { SqlObject obj ->
                     obj.isExistOnDB = isExistOnDB(obj, existUserList)
                     if (obj.isExistOnDB)
                         obj.warnningMessage = WARN_MSG_2
                 }
+                println ' DONE'
             }
 
         }catch(Exception e){
@@ -292,12 +294,12 @@ class SqlMan extends SqlAnalMan{
         }
         //Collect Rpoert
         this.resultReportMap = [
-                sqlInfo     :optionList.join(' | '),
+                option      :optionList.join(' | '),
                 pattern     :patternToGetQuery,
-                matchedCnt  :results.size(),
-                succeededCnt:results.findAll{ it.isOk }.size(),
-                failedCnt   :results.findAll{ !it.isOk }.size(),
-                summary     :getSummary(results),
+                matchedCount  :results.size(),
+                succeededCount:results.findAll{ it.isOk }.size(),
+                failedCount   :results.findAll{ !it.isOk }.size(),
+                summary     :getSummary(results).findAll{ it.value.all > 0 },
 //                analysisResultList:analysisResultList
         ]
     }
@@ -319,7 +321,7 @@ class SqlMan extends SqlAnalMan{
     SqlMan reportGeneratedQuerys(){
         println ""
         println ""
-        println "///// QUERYS"
+        println "<QUERY>"
         analysisResultList.each{
             println "\n[${it.sqlFileName}] ${it.seq} ${it.warnningMessage}"
             println "${it.query}"
@@ -336,7 +338,8 @@ class SqlMan extends SqlAnalMan{
             println ""
             println "<REPORT>"
             resultReportMap.findAll{ it.key != 'summary' }.each{
-                println it
+                println "${it.key.toString().toUpperCase()}"
+                println "   - ${it.value}"
             }
 
             if (resultReportMap.summary){
@@ -388,57 +391,63 @@ class SqlMan extends SqlAnalMan{
 
 
 
-    Map getSummary(List<SqlObject> results){
-        def tableList = results.findAll{ it.commandType.equalsIgnoreCase('CREATE') && it.objectType .equalsIgnoreCase("TABLE") }
-        def indexList = results.findAll{ it.commandType.equalsIgnoreCase('CREATE') && it.objectType .equalsIgnoreCase("INDEX") }
-        def viewList = results.findAll{ it.commandType.equalsIgnoreCase('CREATE') && it.objectType .equalsIgnoreCase("VIEW") }
-        def sequenceList = results.findAll{ it.commandType.equalsIgnoreCase('CREATE') && it.objectType .equalsIgnoreCase("SEQUENCE") }
-        def functionList = results.findAll{ it.commandType.equalsIgnoreCase('CREATE') && it.objectType .equalsIgnoreCase("FUNCTION") }
-        def tablespaceList = results.findAll{ it.commandType.equalsIgnoreCase('CREATE') && it.objectType .equalsIgnoreCase("TABLESPACE") }
-        def userList = results.findAll{ it.commandType.equalsIgnoreCase('CREATE') && it.objectType .equalsIgnoreCase("USER") }
-        def commentList = results.findAll{ it.commandType.equalsIgnoreCase('COMMENT') }
-        def grantList = results.findAll{ it.commandType.equalsIgnoreCase('GRANT') }
-        def insertList = results.findAll{ it.commandType.equalsIgnoreCase('INSERT') }
-        def updateList = results.findAll{ it.commandType.equalsIgnoreCase('UPDATE') }
+    Map getSummary(List<SqlObject> resultList){
+        def createTableList = resultList.findAll{ it.commandType.equalsIgnoreCase('CREATE') && it.objectType .equalsIgnoreCase("TABLE") }
+        def createIndexList = resultList.findAll{ it.commandType.equalsIgnoreCase('CREATE') && it.objectType .equalsIgnoreCase("INDEX") }
+        def createViewList = resultList.findAll{ it.commandType.equalsIgnoreCase('CREATE') && it.objectType .equalsIgnoreCase("VIEW") }
+        def createSequenceList = resultList.findAll{ it.commandType.equalsIgnoreCase('CREATE') && it.objectType .equalsIgnoreCase("SEQUENCE") }
+        def createFunctionList = resultList.findAll{ it.commandType.equalsIgnoreCase('CREATE') && it.objectType .equalsIgnoreCase("FUNCTION") }
+        def createTablespaceList = resultList.findAll{ it.commandType.equalsIgnoreCase('CREATE') && it.objectType .equalsIgnoreCase("TABLESPACE") }
+        def createUserList = resultList.findAll{ it.commandType.equalsIgnoreCase('CREATE') && it.objectType .equalsIgnoreCase("USER") }
+        def alterList = resultList.findAll{ it.commandType.equalsIgnoreCase('ALTER') }
+        def commentList = resultList.findAll{ it.commandType.equalsIgnoreCase('COMMENT') }
+        def grantList = resultList.findAll{ it.commandType.equalsIgnoreCase('GRANT') }
+        def insertList = resultList.findAll{ it.commandType.equalsIgnoreCase('INSERT') }
+        def updateList = resultList.findAll{ it.commandType.equalsIgnoreCase('UPDATE') }
         def summary = [
-                table:[
-                        all: tableList.size(),
-                        o: tableList.findAll{ it.isOk }.size(),
-                        x: tableList.findAll{ !it.isOk }.size()
+                'create table':[
+                        all: createTableList.size(),
+                        o: createTableList.findAll{ it.isOk }.size(),
+                        x: createTableList.findAll{ !it.isOk }.size()
                 ],
-                index:[
-                        all: indexList.size(),
-                        o: indexList.findAll{ it.isOk }.size(),
-                        x: indexList.findAll{ !it.isOk }.size()
+                'create index':[
+                        all: createIndexList.size(),
+                        o: createIndexList.findAll{ it.isOk }.size(),
+                        x: createIndexList.findAll{ !it.isOk }.size()
 
                 ],
-                view:[
-                        all: viewList.size(),
-                        o: viewList.findAll{ it.isOk }.size(),
-                        x: viewList.findAll{ !it.isOk }.size()
+                'create view':[
+                        all: createViewList.size(),
+                        o: createViewList.findAll{ it.isOk }.size(),
+                        x: createViewList.findAll{ !it.isOk }.size()
 
                 ],
-                sequence:[
-                        all: sequenceList.size(),
-                        o: sequenceList.findAll{ it.isOk }.size(),
-                        x: sequenceList.findAll{ !it.isOk }.size()
+                'create sequence':[
+                        all: createSequenceList.size(),
+                        o: createSequenceList.findAll{ it.isOk }.size(),
+                        x: createSequenceList.findAll{ !it.isOk }.size()
                 ],
-                function:[
-                        all: functionList.size(),
-                        o: functionList.findAll{ it.isOk }.size(),
-                        x: functionList.findAll{ !it.isOk }.size()
+                'create function':[
+                        all: createFunctionList.size(),
+                        o: createFunctionList.findAll{ it.isOk }.size(),
+                        x: createFunctionList.findAll{ !it.isOk }.size()
                 ],
-                tablespace:[
-                        all: tablespaceList.size(),
-                        o: tablespaceList.findAll{ it.isOk }.size(),
-                        x: tablespaceList.findAll{ !it.isOk }.size()
+                'create tablespace':[
+                        all: createTablespaceList.size(),
+                        o: createTablespaceList.findAll{ it.isOk }.size(),
+                        x: createTablespaceList.findAll{ !it.isOk }.size()
                 ],
-                user:[
-                        all: userList.size(),
-                        o: userList.findAll{ it.isOk }.size(),
-                        x: userList.findAll{ !it.isOk }.size()
+                'create user':[
+                        all: createUserList.size(),
+                        o: createUserList.findAll{ it.isOk }.size(),
+                        x: createUserList.findAll{ !it.isOk }.size()
                 ],
-                comment:[
+                'alterList':[
+                        all: alterList.size(),
+                        o: alterList.findAll{ it.isOk }.size(),
+                        x: alterList.findAll{ !it.isOk }.size()
+                ],
+                'comment':[
                         all: commentList.size(),
                         o: commentList.findAll{ it.isOk }.size(),
                         x: commentList.findAll{ !it.isOk }.size()
