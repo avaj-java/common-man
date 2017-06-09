@@ -343,8 +343,9 @@ class SqlMan extends SqlAnalMan{
                 println "---------------"
                 int longestStringLength = Util.getLongestLength(mainReportMap.keySet().toList())
                 mainReportMap.each{
-                    String spacesToLineUp = Util.getSpacesToLineUp(longestStringLength)
-                    println "${it.key.toString().toUpperCase()}:${spacesToLineUp} ${it.value}"
+                    String item = it.key.toString().toUpperCase()
+                    String spacesToLineUp = Util.getSpacesToLineUp(item, longestStringLength)
+                    println "${item}:${spacesToLineUp} ${it.value}"
                 }
             }
 
@@ -352,8 +353,9 @@ class SqlMan extends SqlAnalMan{
                 println "---------------"
                 int longestStringLength = Util.getLongestLength(summaryReportMap.keySet().toList())
                 summaryReportMap.each{
-                    String spacesToLineUp = Util.getSpacesToLineUp(longestStringLength)
-                    println "${it.key}:${spacesToLineUp} ${it.value}"
+                    String item = it.key.toString().toUpperCase()
+                    String spacesToLineUp = Util.getSpacesToLineUp(item, longestStringLength)
+                    println "${item}:${spacesToLineUp} ${it.value}"
                 }
             }
 
