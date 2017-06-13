@@ -94,6 +94,10 @@ class PropMan {
         return (!value) ? null : (value != '0' && value != 'false') ? true : false
     }
 
+    Boolean getBoolean(List<String> keyList){
+        return keyList.findAll{ key -> getBoolean(key) }.size() > 0
+    }
+
     /**
      * GET PARSED JSON DATA
      */
