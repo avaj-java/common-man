@@ -175,8 +175,13 @@ class SqlMan extends SqlAnalMan{
             def existUserList
             connect(localOpt)
 
-            // Analysis -
+            //Analysis -
             existObjectList = sql.rows("SELECT OBJECT_NAME, OBJECT_TYPE, OWNER AS SCHEME FROM ALL_OBJECTS")
+
+            //CheckCommandList
+            List<String> mustExistCommandList = localOpt.commandListToCheckIfMustExistBefore
+            List<String> mustNotExistCommandList = localOpt.commandListToCheckIfMustNotExistBefore
+
 
             //Check Exist
             println 'Check OBJECT...'
@@ -184,11 +189,11 @@ class SqlMan extends SqlAnalMan{
                 obj.isExistOnDB = isExistOnSchemeOnDB(obj, existObjectList)
                 if (obj.isExistOnDB) {
                     //Already exist object!
-                    if (!containsIgnoreCase(['INSERT', 'UPDATE'], obj.commandType))
+                    if (containsIgnoreCase(mustNotExistCommandList, obj.commandType))
                         obj.warnningMessage = WARN_MSG_2
                 } else {
                     //Does not exist!
-                    if (obj.objectType.equalsIgnoreCase('TABLE') && containsIgnoreCase(['INSERT', 'UPDATE', 'DELETE', 'COMMENT'], obj.commandType))
+                    if (containsIgnoreCase(mustExistCommandList, obj.commandType))
                         obj.warnningMessage = WARN_MSG_1
                 }
             }
