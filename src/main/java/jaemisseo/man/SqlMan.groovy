@@ -185,7 +185,7 @@ class SqlMan extends SqlAnalMan{
 
             //Check Exist
             println 'Check OBJECT...'
-            Util.eachWithProgressBar(analysisResultList, 20){ SqlObject obj, int i ->
+            Util.eachWithProgressBar(analysisResultList, 20){ SqlObject obj ->
                 obj.isExistOnDB = isExistOnSchemeOnDB(obj, existObjectList)
                 if (obj.isExistOnDB) {
                     //Already exist object!
@@ -260,8 +260,8 @@ class SqlMan extends SqlAnalMan{
     List<SqlObject> getAnalysisResultList(Matcher m){
         def resultList = []
         println "Replace Object Name..."
-        Util.eachWithProgressBar( (m.findAll() as List), 20) { String query, int i ->
-            resultList << getReplacedObject(getAnalysisObject(query), connectedOpt, i + 1)
+        Util.eachWithCountAndProgressBar( (m.findAll() as List), 20) { String query, int count ->
+            resultList << getReplacedObject(getAnalysisObject(query), connectedOpt, count)
         }
         return resultList
     }
@@ -271,7 +271,7 @@ class SqlMan extends SqlAnalMan{
         connect(localOpt)
         sql.withTransaction{
             println "Executing Sqls..."
-            Util.eachWithProgressBar(analysisResultList, 20){ SqlObject result, int i ->
+            Util.eachWithProgressBar(analysisResultList, 20){ SqlObject result ->
                 try{
                     String query = result.query
                     sql.execute(removeLastSemicoln(removeLastSlash(query)))
