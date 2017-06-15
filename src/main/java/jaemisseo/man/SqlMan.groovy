@@ -178,22 +178,17 @@ class SqlMan extends SqlAnalMan{
             //Analysis -
             existObjectList = sql.rows("SELECT OBJECT_NAME, OBJECT_TYPE, OWNER AS SCHEME FROM ALL_OBJECTS")
 
-            //CheckCommandList
-            List<String> mustExistCommandList = localOpt.commandListToCheckIfMustExistBefore
-            List<String> mustNotExistCommandList = localOpt.commandListToCheckIfMustNotExistBefore
-
-
             //Check Exist
             println 'Check OBJECT...'
             Util.eachWithProgressBar(analysisResultList, 20){ SqlObject obj ->
                 obj.isExistOnDB = isExistOnSchemeOnDB(obj, existObjectList)
                 if (obj.isExistOnDB) {
                     //Already exist object!
-                    if (containsIgnoreCase(mustNotExistCommandList, obj.commandType))
+                    if (containsIgnoreCase(localOpt.commnadListThatObjectMustNotExist, obj.commandType))
                         obj.warnningMessage = WARN_MSG_2
                 } else {
                     //Does not exist!
-                    if (containsIgnoreCase(mustExistCommandList, obj.commandType))
+                    if (containsIgnoreCase(localOpt.commnadListThatObjectMustExist, obj.commandType))
                         obj.warnningMessage = WARN_MSG_1
                 }
             }
