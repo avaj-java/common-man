@@ -294,8 +294,8 @@ class SqlMan extends SqlAnalMan{
         }
         //Collect Rpoert
         this.resultReportMap = [
-                option      :optionList.join(' | '),
-                pattern     :patternToGetQuery,
+//                option      :optionList.join(' | '),
+//                pattern     :patternToGetQuery,
                 matchedCount  :results.size(),
                 succeededCount:results.findAll{ it.isOk }.size(),
                 failedCount   :results.findAll{ !it.isOk }.size(),
