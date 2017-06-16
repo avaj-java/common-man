@@ -168,6 +168,9 @@ class SqlMan extends SqlAnalMan{
         return this
     }
 
+    /*************************
+     * CHECK BEFORE
+     *************************/
     SqlMan checkBefore(SqlSetup localOpt){
         try {
             def existObjectList
@@ -175,12 +178,31 @@ class SqlMan extends SqlAnalMan{
             def existUserList
             connect(localOpt)
 
-            //Analysis -
+            //Collecting
+            println '- Collecting OBJECT from DB...'
+            Map data = Util.startPrinter(3, 20)
+            // - OBJECT
             existObjectList = sql.rows("SELECT OBJECT_NAME, OBJECT_TYPE, OWNER AS SCHEME FROM ALL_OBJECTS")
+            // - TABLESPACE
+            def resultsForTablespace = analysisResultList.findAll{ it.commandType.equalsIgnoreCase("CREATE") && it.objectType.equalsIgnoreCase("TABLESPACE") }
+            if (resultsForTablespace){
+                data.stringList << '- Collecting TABLESPACE from DB...'
+                existTablespaceList = sql.rows("SELECT TABLESPACE_NAME AS OBJECT_NAME, 'TABLESPACE' AS OBJECT_TYPE FROM USER_TABLESPACES")
+            }
+            // - USER
+            def resultsForUser = analysisResultList.findAll{ it.commandType.equalsIgnoreCase("CREATE") && it.objectType.equalsIgnoreCase("USER") }
+            if (resultsForUser){
+                data.stringList << '- Collecting USER from DB...'
+                existUserList = sql.rows("SELECT USERNAME AS OBJECT_NAME, 'USER' AS OBJECT_TYPE FROM ALL_USERS")
+            }
+            Util.endWorker(data)
 
-            //Check Exist
-            println 'Check OBJECT...'
-            Util.eachWithProgressBar(analysisResultList, 20){ SqlObject obj ->
+            //Checking
+            // - Check Exist Object
+            println '- Check OBJECT...'
+            Util.eachWithTimeProgressBar(analysisResultList, 20){
+                SqlObject obj = it.item
+                int count = it.count
                 obj.isExistOnDB = isExistOnSchemeOnDB(obj, existObjectList)
                 if (obj.isExistOnDB) {
                     //Already exist object!
@@ -192,12 +214,9 @@ class SqlMan extends SqlAnalMan{
                         obj.warnningMessage = WARN_MSG_1
                 }
             }
-
-            //Check Exist TableSpace
-            def resultsForTablespace = analysisResultList.findAll{ it.commandType.equalsIgnoreCase("CREATE") && it.objectType.equalsIgnoreCase("TABLESPACE") }
-            if (resultsForTablespace) {
-                print ' - Check TABLESPACE...'
-                existTablespaceList = sql.rows("SELECT TABLESPACE_NAME AS OBJECT_NAME, 'TABLESPACE' AS OBJECT_TYPE FROM USER_TABLESPACES")
+            // - Check Exist TableSpace
+            if (resultsForTablespace){
+                print '- Check TABLESPACE...'
                 resultsForTablespace.each { SqlObject obj ->
                     obj.isExistOnDB = isExistOnDB(obj, existTablespaceList)
                     if (obj.isExistOnDB)
@@ -205,12 +224,9 @@ class SqlMan extends SqlAnalMan{
                 }
                 println ' DONE'
             }
-
-            //Check Exist User
-            def resultsForUser = analysisResultList.findAll{ it.commandType.equalsIgnoreCase("CREATE") && it.objectType.equalsIgnoreCase("USER") }
+            // - Check Exist User
             if (resultsForUser){
-                print ' - Check USER...'
-                existUserList = sql.rows("SELECT USERNAME AS OBJECT_NAME, 'USER' AS OBJECT_TYPE FROM ALL_USERS")
+                print '- Check USER...'
                 resultsForUser.each { SqlObject obj ->
                     obj.isExistOnDB = isExistOnDB(obj, existUserList)
                     if (obj.isExistOnDB)
@@ -254,8 +270,10 @@ class SqlMan extends SqlAnalMan{
 
     List<SqlObject> getAnalysisResultList(Matcher m){
         def resultList = []
-        println "Replace Object Name..."
-        Util.eachWithCountAndProgressBar( (m.findAll() as List), 20) { String query, int count ->
+        println "- Replace Object Name..."
+        Util.eachWithTimeProgressBar( (m.findAll() as List), 20) { data ->
+            String query = data.item
+            int count = data.count
             resultList << getReplacedObject(getAnalysisObject(query), connectedOpt, count)
         }
         return resultList
@@ -266,7 +284,9 @@ class SqlMan extends SqlAnalMan{
         connect(localOpt)
         sql.withTransaction{
             println "Executing Sqls..."
-            Util.eachWithProgressBar(analysisResultList, 20){ SqlObject result ->
+            Util.eachWithTimeProgressBar(analysisResultList, 20){ data ->
+                SqlObject result = data.item
+                int count = data.count
                 try{
                     String query = result.query
                     sql.execute(removeLastSemicoln(removeLastSlash(query)))
