@@ -140,7 +140,7 @@ class QuestionMan {
 
             //Wait Your Input
             print "> "
-            if ( yourAnswer || (nowOpt.modeLoadResponseFile || nowOpt.modeOnlyInteractive) ){
+            if ( yourAnswer || (nowOpt.modeLoadResponseFile && nowOpt.modeOnlyInteractive) ){
             }else{
                 yourAnswer = new Scanner(System.in).nextLine()
             }
