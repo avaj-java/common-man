@@ -140,7 +140,10 @@ class QuestionMan {
 
             //Wait Your Input
             print "> "
-            yourAnswer = (yourAnswer && !nowOpt.modeOnlyInteractive) ? yourAnswer : new Scanner(System.in).nextLine()
+            if ( yourAnswer || (nowOpt.modeLoadResponseFile || nowOpt.modeOnlyInteractive) ){
+            }else{
+                yourAnswer = new Scanner(System.in).nextLine()
+            }
 
             //If You Just Enter, Input Recommand Answer
             if (!yourAnswer)
