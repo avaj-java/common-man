@@ -44,6 +44,12 @@ class QueryMan {
 
         static final String ORACLE = "ORACLE"
         static final String TIBERO = "TIBERO"
+//        static final String SYBASE_IQ = "SYBASE_IQ"
+//        static final String SYBASE_ASE = "SYBASE_ASE"
+//        static final String MYSQL = "MYSQL"
+//        static final String DB2 = "DB2"
+
+
         String vendor, id, pw, ip, port, db, url, driver
 
         ConnectionGenerator init(){
@@ -65,12 +71,12 @@ class QueryMan {
 
         Map<String, String> generateDataBaseInfoMap(){
             Map o = [
-                    vendor  : vendor ?: ORACLE,
-                    id      : id,
-                    pw      : pw,
-                    ip      : ip ?: "127.0.0.1",
-                    port    : port ?: "1521",
-                    db      : db ?: "orcl",
+                vendor  : vendor ?: ORACLE,
+                id      : id,
+                pw      : pw,
+                ip      : ip ?: "127.0.0.1",
+                port    : port ?: "1521",
+                db      : db ?: "orcl",
             ]
             o['url']    = url ?: "${getURLProtocol(o.vendor)}@${o.ip}:${o.port}:${o.db}"
             o['driver'] = driver ?: getDriverName(o.vendor)
@@ -120,7 +126,7 @@ class QueryMan {
     Map<String, Connection> connMap = [:]
     Map<String, Connection> connPoolMap
     boolean modeTransaction
-    boolean modeAutoClose
+    boolean modeAutoClose = true
     boolean modeJUnitTest
     Closure autoMetaValueClosure
     Closure batchClosureByOneStep
@@ -140,6 +146,8 @@ class QueryMan {
     def where
     Map<String, String> orderAttributeMap = [:]
 
+    Map columnSetupMap = [:]
+    Map tableSetupMap = [:]
     Map typeMap = [:]
     Map replaceMap = [:]
     String command
@@ -155,9 +163,11 @@ class QueryMan {
     boolean modeCount
     boolean modeToJavaType
     boolean modeTopRank
+    boolean modeAutoCreateTable
     List rankPkAttributes
     String rankOrderAttribute
 
+    int createTableCount = 0
 
 
 
@@ -315,6 +325,9 @@ class QueryMan {
 
         command = ''
         query = ''
+//        typeMap = [:]
+//        columnSetupMap = [:]
+//        tableSetupMap = [:]
         replaceMap = [:]
         resultMap = [:]
         resultType
@@ -328,6 +341,8 @@ class QueryMan {
         modeCount = false
         modeToJavaType = false
         modeTopRank = false
+        modeAutoCreateTable = false
+        createTableCount = 0
         return this
     }
 
@@ -741,7 +756,7 @@ class QueryMan {
                 }
                 return rowDto
             }
-            //NORMAL
+        //NORMAL
         }else{
             closure = { row ->
                 def rowDto = resultType.newInstance()
@@ -866,7 +881,7 @@ class QueryMan {
         modeTransaction = true
         try{
 //            sql.withTransaction{
-            closure(this)
+                closure(this)
 //            }
             if (!modeJUnitTest)
                 commitAll()
@@ -897,6 +912,8 @@ class QueryMan {
         if (resultType){
             resultMap = resultMap ?: generateMatchingMap(resultType)
             tableName = tableName ?: getTableName(resultType)
+            tableSetupMap = tableSetupMap ?: generateTableSetupMap(resultType)
+            columnSetupMap = columnSetupMap ?: generateColumnSetupMap(resultType)
             doAutoMetaValue(resultType) //AutoSetting
         }
         if (param){
@@ -933,7 +950,7 @@ class QueryMan {
                     }
                 })
 
-                /** SELECT COUNT INTEGER **/
+            /** SELECT COUNT INTEGER **/
             }else if (modeCount){
                 sql.rows(query, values).each{
                     result = it['CNT'] as Integer
@@ -957,7 +974,7 @@ class QueryMan {
                         sql.eachRow(query, values, getMetaClosure(), rowClosure)
                     }
 
-                    /** SELECT LIST **/
+                /** SELECT LIST **/
                 }else if (result instanceof List){
                     if (!resultMap){
                         sql.eachRow(query, values, getMetaClosure()){ row -> result << closure(row) }
@@ -965,7 +982,7 @@ class QueryMan {
                         sql.eachRow(query, values){ row -> result << closure(row) }
                     }
 
-                    /** SELECT STRING **/
+                /** SELECT STRING **/
                 }else if (result instanceof String){
                     GroovyRowResult row = sql.firstRow(query, values)
                     String idColumnName = resultMap[resultId] ?: resultId
@@ -974,7 +991,7 @@ class QueryMan {
                     else
                         result = ""
 
-                    /** SELECT INTEGER **/
+                /** SELECT INTEGER **/
                 }else if (result instanceof Integer){
                     GroovyRowResult row = sql.firstRow(query, values)
                     String idColumnName = resultMap[resultId] ?: resultId
@@ -984,6 +1001,18 @@ class QueryMan {
             }
 
         }catch(Exception e){
+            //If Table is not Exist Then Try to Create Table,
+            if (modeAutoCreateTable && isNotExistTable(e)){
+                if (createTableCount == 0){
+                    createTableCount++
+                    // - Try to Create Table
+                    QueryMan tableCreator = getClass().newInstance(conn, resultType)
+                    tableCreator.setModeAutoClose(false).createTable()
+                    println 'Table was Created'
+                    // - Retry
+                    return rows(param, closure, result)
+                }
+            }
             e.printStackTrace()
             throw e
         }finally{
@@ -1014,6 +1043,8 @@ class QueryMan {
         if (resultType){
             resultMap = resultMap ?: generateMatchingMap(resultType)
             typeMap = typeMap ?: generateTypeMap(resultType)
+            tableSetupMap = tableSetupMap ?: generateTableSetupMap(resultType)
+            columnSetupMap = columnSetupMap ?: generateColumnSetupMap(resultType)
             tableName = getTableName(resultType)
             //AutoSetting
             doAutoMetaValue(resultType)
@@ -1041,6 +1072,18 @@ class QueryMan {
                 result = sql.execute(query)
 
         }catch(Exception e){
+            //If Table is not Exist Then Try to Create Table,
+            if (modeAutoCreateTable && isNotExistTable(e)){
+                if (createTableCount == 0){
+                    createTableCount++
+                    // - Try to Create Table
+                    QueryMan tableCreator = getClass().newInstance(conn, resultType)
+                    tableCreator.setModeAutoClose(false).createTable()
+                    println 'Table was Created'
+                    // - Retry
+                    return execute(param)
+                }
+            }
             e.printStackTrace()
             sql.rollback()
             throw e
@@ -1104,13 +1147,22 @@ class QueryMan {
         return result
     }
 
+    boolean isNotExistTable(Exception e){
+        if (e.message.indexOf('ORA-00942') != -1){
+            println " - Table or View not exist."
+            return true
+        }else if (e.message.indexOf('ORA-00955') != -1){
+            println " - Already Exist Table."
+        }else
+            e.printStackTrace()
+        return false
+    }
 
 
 
 
 
-
-    /**
+    /**********
      * Generate Values
      * @param param
      * @return
@@ -1289,7 +1341,7 @@ class QueryMan {
         }else if (command.equals('delete')){
             query = generateDeleteQuery()
         }else if (command.equals('create')){
-            query = generateCreateTableQuery(resultMap, attribute, typeMap)
+            query = generateCreateTableQuery(resultMap, attribute, typeMap, columnSetupMap)
         }
         return query
     }
@@ -1390,13 +1442,13 @@ class QueryMan {
         return query
     }
 
-    String generateCreateTableQuery(Map matchingMap, List props, Map typeMap){
+    String generateCreateTableQuery(Map matchingMap, List props, Map typeMap, Map columnSetupMap){
         String tableName = tableName
         List listColumnInfo = []
 
         props.each{ String propNm ->
             String columnName = matchingMap[propNm]
-            String columnType = getColumnType(typeMap[propNm])
+            String columnType = getColumnType(typeMap[propNm], columnSetupMap[propNm])
             listColumnInfo << "${columnName} ${columnType}"
         }
 
@@ -1473,18 +1525,45 @@ class QueryMan {
         return machingMap
     }
 
+    Map generateTableSetupMap(Class resultType) throws IllegalAccessException {
+        Map tableSetupMap = [:]
+        if (resultType.getAnnotation(QueryTableSetup.class)){
+            QueryTableSetup annotation = resultType.getAnnotation(QueryTableSetup.class)
+        }
+        if (resultType.getAnnotation(QueryTableAutoCreate.class)){
+            QueryTableAutoCreate annotation = resultType.getAnnotation(QueryTableAutoCreate.class)
+            modeAutoCreateTable = true
+        }
+        return tableSetupMap
+    }
+
+    Map generateColumnSetupMap(Class resultType) throws IllegalAccessException {
+        Map columnSetupMap = [:]
+        resultType.getDeclaredFields().each{ Field field ->
+            QueryColumnSetup annotation = field.getAnnotation(QueryColumnSetup.class);
+            if( annotation ){
+                if (field.type == String.class || field.type == Date.class  || field.type == Integer.class){
+                    field.accessible = true
+                    columnSetupMap[field.name] = annotation
+                }
+            }
+        }
+        return columnSetupMap
+    }
+
+
     void setPageValue(def instance) throws IllegalAccessException {
         instance.getClass().getDeclaredFields().each{ Field field ->
             if( field.getAnnotation(QueryPageSize.class) ){
                 if (field.type == String.class || field.type == Date.class  || field.type == Integer.class){
                     field.accessible = true
-                    pageSize = instance[field.name]
+                    pageSize = (instance[field.name] as Integer)
                 }
             }
             if( field.getAnnotation(QueryPageNumber.class) ){
                 if (field.type == String.class || field.type == Date.class  || field.type == Integer.class){
                     field.accessible = true
-                    page = instance[field.name]
+                    pageNum = (instance[field.name] as Integer)
                 }
             }
         }
@@ -1595,13 +1674,20 @@ class QueryMan {
         return query
     }
 
-    String getColumnType(Class clazz){
-        if (clazz == Date.class)
+    String getColumnType(Class clazz, QueryColumnSetup columnSetupAnnotation){
+        if (clazz == Date.class){
             return "DATE"
-        else if (clazz == String.class)
-            return "VARCHAR2(500)"
-        else if (clazz == Integer.class)
+
+        }else if (clazz == String.class){
+            if (columnSetupAnnotation && columnSetupAnnotation.big())
+                return "CLOB"
+            else
+                return "VARCHAR2(500)"
+
+        }else if (clazz == Integer.class){
             return "NUMBER"
+        }
+
         return "VARCHAR2"
     }
 
