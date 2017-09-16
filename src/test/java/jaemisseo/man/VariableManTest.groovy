@@ -63,15 +63,21 @@ class VariableManTest {
         assert varman.parse('${installer.level.1.file.path(3)}') == '/fo'
 
         // Test - date (내장된 변수)
+        println varman.parse('${}as ${date()} ${}')
         println varman.parse('${}as ${date(yyyy-MM-dd HH:mm:ssSSS)} ${}')
-        // Test - date (내장된 변수)
         println varman.parse('${}as ${date(SSS)}${}')
-        // Test - date (내장된 변수)
         println varman.parse('${}as ${date(SS)}${}')
-        // Test - date (내장된 변수)
         println varman.parse('${}as ${date(S)}${}')
-        // Test - random (내장된변수)
+        println varman.parse('${}as ${date(long)}${}')
+        println varman.parse('${}as ${date(long)}${}')
         println varman.parse('[${date(yyyyMMddHHmmssSSS)}${random(5)}]')
+
+        // Test - parseDefaultVariableOnly
+        String tempCode = '${USERNAME} ${notExistsVariable} [${date(yyyyMMddHHmmssSSS)}${random(5)}]'
+        println varman.setModeExistCodeOnly(true).parse(tempCode)
+        println varman.setModeExistCodeOnly(false).parse(tempCode)
+        println varman.setModeExistCodeOnly(true).parseDefaultVariableOnly(tempCode)
+        println varman.setModeExistCodeOnly(false).parseDefaultVariableOnly(tempCode)
 
     }
 

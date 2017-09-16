@@ -331,7 +331,9 @@ class VariableMan {
         return resultStr
     }
 
-
+    String parseDefaultVariableOnly(String codeRule){
+        return new VariableMan().setModeExistCodeOnly(true).parse(codeRule)
+    }
 
     String getRightReplacement(String replacement){
         // This Condition's Logic prevent disapearance \
@@ -431,9 +433,15 @@ class VariableMan {
         return [
                 'DATE': { FuncObject it ->
                     String[] members = it.members
-                    String format = (members && members[0]) ? members[0] : 'YYYYMMdd'
-                    it.substitutes = new SimpleDateFormat(format).format(new Date())
-                    it.length = format.length()
+                    String format = (members && members[0]) ? members[0] : 'yyyyMMdd'
+                    if (format == 'long'){
+                        it.substitutes = String.valueOf(new Date().getTime())
+                        it.length = it.substitutes.length()
+                    }else{
+                        it.substitutes = new SimpleDateFormat(format).format(new Date())
+                        it.length = format.length()
+                    }
+
                 },
                 'RANDOM': { FuncObject it ->
                     String[] members = it.members
