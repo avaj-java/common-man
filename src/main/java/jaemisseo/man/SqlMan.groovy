@@ -108,7 +108,7 @@ class SqlMan extends SqlAnalMan{
     }
 
     SqlMan connect(SqlSetup localOpt){
-        SqlSetup opt = gOpt.clone().merge(localOpt)
+        SqlSetup opt = mergeOption(localOpt)
         opt.url    = (opt.url) ? opt.url : getUrl(localOpt.vendor, localOpt.ip, localOpt.port, localOpt.db)
         opt.driver = (opt.driver) ? opt.driver : getDriver(localOpt.vendor)
         this.sql = Sql.newInstance(opt.url, opt.user, opt.password, opt.driver)
@@ -118,13 +118,12 @@ class SqlMan extends SqlAnalMan{
 
 
 
-    SqlMan doOption(){
-        return doOption(gOpt)
+    SqlSetup mergeOption(){
+        return mergeOption(gOpt)
     }
 
-    SqlMan doOption(SqlSetup localOpt){
-        connectedOpt = gOpt.clone().merge(localOpt)
-        return this
+    SqlSetup mergeOption(SqlSetup localOpt){
+        return gOpt.clone().merge(localOpt)
     }
 
 
@@ -161,7 +160,7 @@ class SqlMan extends SqlAnalMan{
     }
 
     SqlMan replace(SqlSetup localOpt){
-        doOption(localOpt)
+        connectedOpt = mergeOption(localOpt)
         // analysis
         Matcher m = getMatchedList(this.sqlContent, this.patternToGetQuery)
         analysisResultList = getAnalysisResultList(m)
@@ -180,7 +179,7 @@ class SqlMan extends SqlAnalMan{
 
             //Collecting
             println '- Collecting OBJECT from DB...'
-            Map data = Util.startPrinter(3, 20)
+            Map data = Util.startPrinter(3, 20, localOpt.modeSqlProgressBar)
             // - OBJECT
             existObjectList = sql.rows("SELECT OBJECT_NAME, OBJECT_TYPE, OWNER AS SCHEME FROM ALL_OBJECTS")
             // - TABLESPACE
@@ -200,7 +199,7 @@ class SqlMan extends SqlAnalMan{
             //Checking
             // - Check Exist Object
             println '- Check OBJECT...'
-            Util.eachWithTimeProgressBar(analysisResultList, 20){
+            Util.eachWithTimeProgressBar(analysisResultList, 20, connectedOpt.modeSqlProgressBar){
                 SqlObject obj = it.item
                 int count = it.count
                 obj.isExistOnDB = isExistOnSchemeOnDB(obj, existObjectList)
@@ -271,7 +270,7 @@ class SqlMan extends SqlAnalMan{
     List<SqlObject> getAnalysisResultList(Matcher m){
         def resultList = []
         println "- Replace Object Name..."
-        Util.eachWithTimeProgressBar( (m.findAll() as List), 20) { data ->
+        Util.eachWithTimeProgressBar( (m.findAll() as List), 20, connectedOpt.modeSqlProgressBar) { data ->
             String query = data.item
             int count = data.count
             resultList << getReplacedObject(getAnalysisObject(query), connectedOpt, count)
@@ -284,7 +283,7 @@ class SqlMan extends SqlAnalMan{
         connect(localOpt)
         sql.withTransaction{
             println "Executing Sqls..."
-            Util.eachWithTimeProgressBar(analysisResultList, 20){ data ->
+            Util.eachWithTimeProgressBar(analysisResultList, 20, connectedOpt.modeSqlProgressBar){ data ->
                 SqlObject result = data.item
                 int count = data.count
                 try{
