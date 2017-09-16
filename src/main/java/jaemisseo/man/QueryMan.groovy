@@ -3,11 +3,7 @@ package jaemisseo.man
 import groovy.sql.BatchingPreparedStatementWrapper
 import groovy.sql.GroovyRowResult
 import groovy.sql.Sql
-import jaemisseo.man.annotation.QueryAutoValue
-import jaemisseo.man.annotation.QueryColumn
-import jaemisseo.man.annotation.QueryPageNumber
-import jaemisseo.man.annotation.QueryPageSize
-import jaemisseo.man.annotation.QueryTable
+import jaemisseo.man.annotation.*
 import oracle.sql.TIMESTAMP
 
 import java.lang.reflect.Array

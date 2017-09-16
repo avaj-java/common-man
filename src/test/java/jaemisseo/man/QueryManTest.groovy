@@ -1,5 +1,6 @@
 package jaemisseo.man
 
+import groovyjarjarantlr.collections.List
 import jaemisseo.man.bean.ManColTestBean
 import jaemisseo.man.bean.ManTestBean
 import jaemisseo.man.util.ConnectionGenerator
@@ -77,11 +78,8 @@ class QueryManTest {
         updateQuery = "update insa_jb_dqm set email = 'QueryMan_TEST@mail.com' where swbeonho='new1' and name='뉴사용자1' "
         deleteQuery = "delete from insa_jb_dqm where swbeonho='new1' and name='뉴사용자1'"
 
-//        dbInfo = [ip:'127.0.0.1', db:'orcl', id:'tester', pw:'tester']
-//        dbInfo2 = [ip:'127.0.0.1', db:'orcl', id:'tester2', pw:'tester2']
-
-        dbInfo = [ip:'192.168.0.158', db:'da', id:'spusr', pw:'spusr']
-        dbInfo2 = [ip:'192.168.0.158', db:'da', id:'spusr', pw:'spusr']
+        dbInfo = [ip:'127.0.0.1', db:'orcl', id:'tester', pw:'tester']
+        dbInfo2 = [ip:'127.0.0.1', db:'orcl', id:'tester2', pw:'tester2']
 
         ConnectionGenerator connGen = new ConnectionGenerator()
         conn = connGen.generate(dbInfo)
@@ -108,6 +106,7 @@ class QueryManTest {
      * SELECT & INSERT & UPDATE
      *************************/
     @Test
+    @Ignore
     void select(){
         printTitle 'SelectString'
         new QueryMan(dbInfo, 'SELECT * from tab').selectString()
@@ -136,6 +135,7 @@ class QueryManTest {
     }
 
     @Test
+    @Ignore
     void joinQuery(){
         printTitle 'SelectString'
         new QueryMan(dbInfo(), ManTestBean)
@@ -146,18 +146,21 @@ class QueryManTest {
     }
 
     @Test
+    @Ignore
     void insert(){
         new QueryMan(dbInfo2, selectQuery).selectList()
         new QueryMan(dbInfo2, insertQuery).insert()
     }
 
     @Test
+    @Ignore
     void update(){
         new QueryMan(dbInfo2, selectQuery).selectList()
         new QueryMan(dbInfo2, updateQuery).update()
     }
 
     @Test
+    @Ignore
     void delete(){
         new QueryMan(dbInfo2, selectQuery).selectList()
         new QueryMan(dbInfo2, deleteQuery).delete()
@@ -169,6 +172,7 @@ class QueryManTest {
      * BATCH
      *************************/
     @Test
+    @Ignore
     void insertBatch(){
         new QueryMan(dbInfo2, selectQuery).selectList()
         new QueryMan(dbInfo2, insertQuery).insertBatch( [ new ManTestBean(), new ManTestBean(), new ManTestBean() ] )
@@ -181,6 +185,7 @@ class QueryManTest {
      * TRANSACTION
      *************************/
     @Test
+    @Ignore
     void transaction(){
         //Same Connection => Same Pipe
         //No Connection => Recent Connection
@@ -203,6 +208,7 @@ class QueryManTest {
     }
 
     @Test
+    @Ignore
     void transactionDefaultConn(){
         printTitle 'Transaction Type1'
         new QueryMan(dbInfo).transaction{ QueryMan qman ->
@@ -240,6 +246,7 @@ class QueryManTest {
     }
 
     @Test
+    @Ignore
     void transactionConnPool(){
         printTitle 'Transaction Type1'
         new QueryMan().setConnPool([db1:conn, db2:conn2]).transaction{ QueryMan qman ->
@@ -277,6 +284,7 @@ class QueryManTest {
     }
 
     @Test
+    @Ignore
     void transactionBatch(){
 
 //        new QueryMan().init(conn).createTable( new ManTestBean() )
