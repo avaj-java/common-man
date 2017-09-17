@@ -52,16 +52,16 @@ class PropMan {
         return this
     }
 
-    /**
+    /**********
      * SET DATA
-     */
+     **********/
     void set(String key, def data){
         properties[key] = data
     }
 
-    /**
+    /**********
      * GET DATA
-     */
+     **********/
     def get(String key){
         return get(key, null)
     }
@@ -98,9 +98,13 @@ class PropMan {
         return keyList.findAll{ key -> getBoolean(key) }.size() > 0
     }
 
-    /**
+
+
+    /*************************
+     *
      * GET PARSED JSON DATA
-     */
+     *
+     *************************/
     def parse(String key){
         parse(key, null)
     }
@@ -128,9 +132,11 @@ class PropMan {
 
 
 
-    /**
+    /*************************
+     *
      * LOAD PROPERTIES
-     */
+     *
+     *************************/
     PropMan readFile(List paths, String filename){
         def results = []
         paths.each { String path ->
@@ -278,9 +284,13 @@ class PropMan {
         return lineList
     }
 
-    /**
+
+
+    /*************************
+     *
      * MERGE
-     */
+     *
+     *************************/
     PropMan merge(String filePath){
         return mergeFile(filePath)
     }
@@ -313,10 +323,12 @@ class PropMan {
         return this
     }
 
-    /**
+    /*************************
+     *
      * MERGE NEW
      * Merge Only New Property
-     */
+     *
+     *************************/
     PropMan mergeNew(String filePath){
         return mergeFileNew(filePath)
     }
@@ -408,6 +420,13 @@ class PropMan {
         return isRootPath
     }
 
+
+
+    /*************************
+     *
+     * FIND OBJECT
+     *
+     *************************/
     def find(def object, def condition){
         if (object instanceof Map){
             def matchedObj = getMatchedObject(object, condition)
@@ -436,16 +455,19 @@ class PropMan {
         }
         if (condition instanceof Map){
             for (String key : (condition as Map).keySet()){
-                String attributeValue = object[key]
+                def attributeValue = object[key]
                 def conditionValue = condition[key]
                 if (attributeValue){
-                    if (conditionValue instanceof String && attributeValue == conditionValue){
-                    }else if (conditionValue instanceof List && conditionValue.contains(attributeValue)){
+                    if (conditionValue instanceof List && conditionValue.contains(attributeValue)){
+                    }else if (attributeValue == conditionValue){
+                    }else{
+                        return //nothing
+                    }
+                }else{
+                    if (attributeValue == conditionValue){
                     }else{
                         return //No Matching
                     }
-                }else{
-                    return //No Matching
                 }
             }
             return object
@@ -455,9 +477,12 @@ class PropMan {
     }
 
 
-    /**
-     * UNDO MANAGER
-     */
+
+    /*************************
+     *
+     * UNDO & REDO MANAGER
+     *
+     *************************/
     PropMan undo(){
         checkout(headIndex - 1)
         return this
