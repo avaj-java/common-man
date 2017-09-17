@@ -36,7 +36,7 @@ repositories {
 
 dependencies {
 
-    compile (rootProject?.findProject('common-util')) ? project(':common-util') : 'com.github.avaj-java:common-util:0.1.62'
+    compile (rootProject?.findProject('common-util')) ? project(':common-util') : 'com.github.avaj-java:common-util:0.1.7'
 
     //JDBC
     compile 'com.oracle:ojdbc6:11.2.0.3'
