@@ -157,10 +157,13 @@ class PropMan {
             }
             throw new Exception("Couldn't Find Properties File")
         }
+        return this
     }
 
+    /*************************
+     * read From file
+     *************************/
     PropMan readFile(String filePath){
-        // Load Properties File
         try{
             String absolutePath = getFullPath(filePath)
             File file = new File(absolutePath)
@@ -169,8 +172,28 @@ class PropMan {
         }catch(Exception e){
             throw e
         }
+        return this
     }
 
+    /*************************
+     * read From file(PROPERTIES)
+     *************************/
+    PropMan readPropertiesFile(String filePath){
+        // Load Properties File
+        try{
+            String absolutePath = getFullPath(filePath)
+            File file = new File(absolutePath)
+            loadPropertiesFile(file)
+
+        }catch(Exception e){
+            throw e
+        }
+        return this
+    }
+
+    /*************************
+     * ead From resource file(PROPERTIES)
+     *************************/
     PropMan readResource(String absolutePath){
         //Works in IDE
 //        URL url = getClass().getResource(absolutePath);
@@ -201,7 +224,11 @@ class PropMan {
         return this
     }
 
-    PropMan load(File file){
+    private void load(File file){
+        loadPropertiesFile(file)
+    }
+
+    private void loadPropertiesFile(File file){
         try{
             String text = getTextFromFile(file)
             properties.load( new StringReader(text.replace('\\','\\\\')) )
@@ -210,7 +237,6 @@ class PropMan {
         }catch(Exception e){
             throw e
         }
-        return this
     }
 
     String getTextFromFile(File file){
