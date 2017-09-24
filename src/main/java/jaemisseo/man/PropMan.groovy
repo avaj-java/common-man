@@ -35,6 +35,11 @@ class PropMan {
         readFile(filePath)
     }
 
+    PropMan(File file){
+        init()
+        readFile(file)
+    }
+
 
 
     PropMan init(){
@@ -164,9 +169,13 @@ class PropMan {
      * read From file
      *************************/
     PropMan readFile(String filePath){
+        String absolutePath = getFullPath(filePath)
+        File file = new File(absolutePath)
+        return readFile(file)
+    }
+
+    PropMan readFile(File file){
         try{
-            String absolutePath = getFullPath(filePath)
-            File file = new File(absolutePath)
             load(file)
 
         }catch(Exception e){
@@ -192,18 +201,20 @@ class PropMan {
     }
 
     /*************************
-     * ead From resource file(PROPERTIES)
+     * read From resource file(PROPERTIES)
      *************************/
-    PropMan readResource(String absolutePath){
+    PropMan readResource(String resourcePath){
         //Works in IDE
-//        URL url = getClass().getResource(absolutePath);
-        URL url = Thread.currentThread().getContextClassLoader().getResource(absolutePath)
+//        URL url = getClass().getResource(resourcePath);
+        URL url = Thread.currentThread().getContextClassLoader().getResource(resourcePath)
+        int fileNameLastDotIndex = resourcePath.lastIndexOf('.')
+        String fileNameExtension = (fileNameLastDotIndex != -1) ? resourcePath.substring(fileNameLastDotIndex +1)?.toLowerCase() : ''
         File file
         if (url.toString().startsWith("jar:")){
             //Works in JAR
             try {
-                InputStream input = getClass().getResourceAsStream("/${absolutePath}")
-                file = File.createTempFile("tempfile", ".tmp")
+                InputStream input = getClass().getResourceAsStream("/${resourcePath}")
+                file = File.createTempFile("tempfile", ".${fileNameExtension}")
                 OutputStream out = new FileOutputStream(file)
                 int len
                 byte[] bytes = new byte[1024]
@@ -321,10 +332,28 @@ class PropMan {
         return mergeFile(filePath)
     }
 
+    PropMan merge(File file){
+        return mergeFile(file)
+    }
+
+    PropMan merge(List<String> filePathList){
+        filePathList.each{ mergeFile(it) }
+        return this
+    }
+
     PropMan mergeFile(String filePath){
-        String absolutePath = getFullPath(filePath)
-        Properties properties = new PropMan(absolutePath).properties
+        Properties properties = new PropMan(filePath).properties
         return merge(properties)
+    }
+
+    PropMan mergeFile(File file){
+        Properties properties = new PropMan(file).properties
+        return merge(properties)
+    }
+
+    PropMan mergeFile(List<File> filePathList){
+        filePathList.each{ mergeFile(it) }
+        return this
     }
 
     PropMan mergeResource(String resourcePath){
