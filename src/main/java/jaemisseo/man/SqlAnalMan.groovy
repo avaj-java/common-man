@@ -586,8 +586,8 @@ class SqlAnalMan {
         def words = obj.arrayToCompare
         String target
         if (opt){
-            if (opt.replace){
-                opt.replace.each{ String before, String after ->
+            if (opt.replaceAll){
+                opt.replaceAll.each{ String before, String after ->
                     words.collect{ it.replaceAll(before, after) }
                 }
             }
