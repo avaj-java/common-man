@@ -1,6 +1,6 @@
 package jaemisseo.man
 
-import jaemisseo.man.util.SqlSetup
+import jaemisseo.man.bean.SqlSetup
 import org.junit.After
 import org.junit.Before
 import org.junit.Ignore
