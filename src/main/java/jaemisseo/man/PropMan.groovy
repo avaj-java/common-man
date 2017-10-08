@@ -1,6 +1,6 @@
 package jaemisseo.man
 
-import jaemisseo.man.util.FileSetup
+import jaemisseo.man.bean.FileSetup
 import jaemisseo.man.util.UndoPropertiesObject
 import groovy.json.JsonSlurper
 

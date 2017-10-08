@@ -1,6 +1,6 @@
 package jaemisseo.man
 
-import jaemisseo.man.util.SqlSetup
+import jaemisseo.man.bean.SqlSetup
 
 import java.util.regex.Matcher
 import java.util.regex.Pattern

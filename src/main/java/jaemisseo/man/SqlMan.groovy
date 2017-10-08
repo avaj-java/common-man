@@ -1,7 +1,7 @@
 package jaemisseo.man
 
 import groovy.sql.Sql
-import jaemisseo.man.util.SqlSetup
+import jaemisseo.man.bean.SqlSetup
 import jaemisseo.man.util.Util
 
 import java.sql.SQLException

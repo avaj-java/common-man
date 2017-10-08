@@ -1,6 +1,6 @@
 package jaemisseo.man
 
-import jaemisseo.man.util.QuestionSetup
+import jaemisseo.man.bean.QuestionSetup
 
 /**
  * Created by sujkim on 2017-03-18.
