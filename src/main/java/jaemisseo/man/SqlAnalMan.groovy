@@ -1,6 +1,8 @@
 package jaemisseo.man
 
 import jaemisseo.man.bean.SqlSetup
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 import java.util.regex.Matcher
 import java.util.regex.Pattern
@@ -14,6 +16,7 @@ import java.util.regex.Pattern
  */
 class SqlAnalMan {
 
+    final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     class SqlObject{
 

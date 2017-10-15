@@ -3,11 +3,15 @@ package jaemisseo.man
 import jaemisseo.man.bean.FileSetup
 import jaemisseo.man.util.UndoPropertiesObject
 import groovy.json.JsonSlurper
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 /**
  * Created by sujung on 2016-09-25.
  */
 class PropMan {
+
+    final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     Properties properties = new Properties()
     Properties lastCommitProperties  = new Properties()
@@ -158,7 +162,7 @@ class PropMan {
         // Check Error
         if (!results.findAll{ return it.isOk }){
             results.each{
-                println it.error
+                logger.error it.error
             }
             throw new Exception("Couldn't Find Properties File")
         }
@@ -468,7 +472,7 @@ class PropMan {
             return true
         File.listRoots().each{
             String rootPath = new File(it.path).path
-//            println "Root Path:" + rootPath
+//            logger.debug "Root Path:" + rootPath
             if (path.startsWith(rootPath) || path.startsWith(rootPath.toLowerCase()))
                 isRootPath = true
         }

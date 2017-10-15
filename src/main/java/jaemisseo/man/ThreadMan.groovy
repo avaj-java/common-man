@@ -1,5 +1,8 @@
 package jaemisseo.man
 
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
+
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
@@ -8,6 +11,8 @@ import java.util.concurrent.TimeUnit
  * Created by sujkim on 2017-06-01.
  */
 class ThreadMan{
+
+    final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     /** Thread Pool **/
     int THREAD_CNT = 10

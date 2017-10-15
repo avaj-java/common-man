@@ -1,5 +1,8 @@
 package jaemisseo.man
 
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
+
 import java.text.SimpleDateFormat
 import java.util.regex.Matcher
 import java.util.regex.Pattern
@@ -12,6 +15,8 @@ import java.util.regex.Pattern
  * To change this template use File | Settings | File Templates.
  */
 class VariableMan {
+
+    final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     /**
      * CONSTRUCTORS
@@ -308,25 +313,25 @@ class VariableMan {
                 allUserSetLength += userSetLength
                 allByteLength += byteLength
                 allCharLength += charLength
-                println "////////// ${oneVal}"
-                println "[${funcObj.substitutes}]"
-                println "Length: ${charLength} / Byte: ${byteLength} / Your Set: ${userSetLength}"
+                logger.debug "////////// ${oneVal}"
+                logger.debug "[${funcObj.substitutes}]"
+                logger.debug "Length: ${charLength} / Byte: ${byteLength} / Your Set: ${userSetLength}"
                 if (userSetLength !=0 && userSetLength != byteLength){
-                    println "!!! !!! !!! !!! !!!"
-                    println "!!! Not Matched !!!"
-                    println "!!! !!! !!! !!! !!!"
+                    logger.debug "!!! !!! !!! !!! !!!"
+                    logger.debug "!!! Not Matched !!!"
+                    logger.debug "!!! !!! !!! !!! !!!"
                 }
             }
         }
         if (modeDebug){
-            println ""
-            println "//////////////////////////////////////////////////"
-            println "////// ALL LENGTH ////////////////////////////////"
-            println "//////////////////////////////////////////////////"
-            println "SETUP LENGTH : ${allUserSetLength}"
-            println " BYTE LENGTH : ${allByteLength}"
-            println " CHAR LENGTH : ${allCharLength}"
-            println ""
+            logger.debug ""
+            logger.debug "//////////////////////////////////////////////////"
+            logger.debug "////// ALL LENGTH ////////////////////////////////"
+            logger.debug "//////////////////////////////////////////////////"
+            logger.debug "SETUP LENGTH : ${allUserSetLength}"
+            logger.debug " BYTE LENGTH : ${allByteLength}"
+            logger.debug " CHAR LENGTH : ${allCharLength}"
+            logger.debug ""
         }
         return resultStr
     }

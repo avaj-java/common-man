@@ -1,11 +1,15 @@
 package jaemisseo.man
 
 import jaemisseo.man.bean.QuestionSetup
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 /**
  * Created by sujkim on 2017-03-18.
  */
 class QuestionMan {
+
+    final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     public static final int QUESTION_TYPE_FREE = 1
     public static final int QUESTION_TYPE_YN = 2
@@ -136,7 +140,7 @@ class QuestionMan {
                 throw new Exception('So Many Not Good Answer. Please Correct Answer :) ')
 
             //Print Question
-            genQuestion(nowOpt).each{ println it }
+            genQuestion(nowOpt).each{ logger.info it }
 
             //Wait Your Input
             print "> "
@@ -154,9 +158,9 @@ class QuestionMan {
             isOk = (validAnswerList.contains(yourAnswer) || isOk) && !invalidAnswerList.contains(yourAnswer)
 
             //Check Answer
-            println "=> ${yourAnswer}\n"
+            logger.info "=> ${yourAnswer}\n"
             if (!isOk){
-                println "!! Not Good Answer. Please Answer Angain"
+                logger.error "!! Not Good Answer. Please Answer Angain"
                 yourAnswer = ""
             }
 

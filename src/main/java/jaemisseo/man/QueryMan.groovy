@@ -5,6 +5,8 @@ import groovy.sql.GroovyRowResult
 import groovy.sql.Sql
 import jaemisseo.man.annotation.*
 import oracle.sql.TIMESTAMP
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 import java.lang.reflect.Array
 import java.lang.reflect.Field
@@ -22,7 +24,7 @@ import java.sql.Connection
 class QueryMan {
 
     //Logger
-//    private Logger logger = LoggerFactory.getLogger(getClass());
+    final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     //Package
     private String packagePath = getClass().getName()
@@ -1004,7 +1006,7 @@ class QueryMan {
                     // - Try to Create Table
                     QueryMan tableCreator = getClass().newInstance(conn, resultType)
                     tableCreator.setModeAutoClose(false).createTable()
-                    println 'Table was Created'
+                    logger.debug 'Table was Created'
                     // - Retry
                     return rows(param, closure, result)
                 }
@@ -1075,7 +1077,7 @@ class QueryMan {
                     // - Try to Create Table
                     QueryMan tableCreator = getClass().newInstance(conn, resultType)
                     tableCreator.setModeAutoClose(false).createTable()
-                    println 'Table was Created'
+                    logger.debug 'Table was Created'
                     // - Retry
                     return execute(param)
                 }
@@ -1145,10 +1147,10 @@ class QueryMan {
 
     boolean isNotExistTable(Exception e){
         if (e.message.indexOf('ORA-00942') != -1){
-            println " - Table or View not exist."
+            logger.error " - Table or View not exist."
             return true
         }else if (e.message.indexOf('ORA-00955') != -1){
-            println " - Already Exist Table."
+            logger.error " - Already Exist Table."
         }else
             e.printStackTrace()
         return false
@@ -1213,13 +1215,13 @@ class QueryMan {
 
     boolean commitAll(){
         sqlMap.each{ String connectionId, Sql sql -> sql.commit() }
-        println " - Completed Commit All"
+        logger.debug " - Completed Commit All"
         return true
     }
 
     boolean rollBackAll(){
         sqlMap.each{ String connectionId, Sql sql -> sql.rollback() }
-        println " - Completed Rollback All"
+        logger.debug " - Completed Rollback All"
         return true
     }
 
@@ -1267,16 +1269,16 @@ class QueryMan {
             //Transaction Mode => No Disconnect
         }else{
             if (modeJUnitTest){
-                println " (Auto Rollback on JUnit TEST)"
+                logger.debug " (Auto Rollback on JUnit TEST)"
                 sql.rollback()
             }
             if (modeAutoClose){
                 sql.close()
-                println " - Completed Disconnected"
+                logger.debug " - Completed Disconnected"
             }
             if (modeCloseAfter){
                 sql.close()
-                println " - Completed Disconnected"
+                logger.debug " - Completed Disconnected"
             }
         }
         return true
@@ -1285,7 +1287,7 @@ class QueryMan {
     private boolean disconnectAll() {
         //When JUnit Test => Rollback All
         if (modeJUnitTest) {
-            println " (Auto Rollback on JUnit TEST)"
+            logger.debug " (Auto Rollback on JUnit TEST)"
             rollBackAll()
         }
         //Disconnect All
@@ -1293,11 +1295,11 @@ class QueryMan {
             sqlMap.each { String connectionId, Sql sql ->
                 sql.close()
             }
-            println " - Completed Disconnected All"
+            logger.debug " - Completed Disconnected All"
         }else{
             sqlMapForCloseAfter.each{ String connectionId, Sql sql ->
                 sql.close()
-                println " - Completed Disconnected"
+                logger.debug " - Completed Disconnected"
             }
         }
         modeTransaction = false

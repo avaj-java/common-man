@@ -1,5 +1,8 @@
 package jaemisseo.man
 
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
+
 /**
  * Created with IntelliJ IDEA.
  * User: sujkim
@@ -8,6 +11,8 @@ package jaemisseo.man
  * To change this template use File | Settings | File Templates.
  */
 class CompareMan {
+
+    final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     List compareField
     def statusNone

@@ -1,5 +1,8 @@
 package jaemisseo.man
 
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
+
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
@@ -12,6 +15,8 @@ import java.util.concurrent.TimeUnit
  * To change this template use File | Settings | File Templates.
  */
 class SocketMan {
+
+    final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     ServerSocket serverSocket
     Socket socket
@@ -112,7 +117,7 @@ class SocketMan {
 
             if (realBytes){
                 String msg = (charset) ? new String(realBytes, charset) : new String(realBytes)
-                println "[${client}] -> ${msg}"
+                logger.debug "[${client}] -> ${msg}"
                 receivedMsg = msg
                 closure(this)
 
@@ -120,9 +125,9 @@ class SocketMan {
                 byte[] sendBytes = (charset) ? msg.getBytes(charset) : msg.getBytes()
                 os.write(sendBytes)
                 os.flush()
-                println "[${client}] <- ${msg}"
+                logger.debug "[${client}] <- ${msg}"
             }else{
-                println "[${client}] - send no data to Server "
+                logger.debug "[${client}] - send no data to Server "
             }
         }
     }
@@ -135,7 +140,7 @@ class SocketMan {
         // Open Server
         try{
             serverSocket = new ServerSocket(port)
-            println "[${serverSocket.getLocalSocketAddress()}] Server is running"
+            logger.debug "[${serverSocket.getLocalSocketAddress()}] Server is running"
         }catch(IOException e){
             e.printStackTrace()
             throw e
@@ -167,7 +172,7 @@ class SocketMan {
                         logPoolCount += "Thread Count in Pool: ${threadPool.getActiveCount()}"
                         if (threadPool.getQueue().size() != 0)
                             logPoolCount += " ...(wait: ${threadPool.getQueue().size()})"
-                        println "${logConnect} (${logPoolCount})"
+                        logger.debug "${logConnect} (${logPoolCount})"
                         // Get stream
                         dis = new DataInputStream(socket.getInputStream())
                         dos = new DataOutputStream(socket.getOutputStream())
@@ -179,7 +184,7 @@ class SocketMan {
                     }finally{
                         if (modeAutoClose)
                             disconnect()
-                        println "[${client}] Disconnected from Server"
+                        logger.debug "[${client}] Disconnected from Server"
                     }
                 }
             }))
@@ -191,7 +196,7 @@ class SocketMan {
         try{
             threadPool.shutdown()
             serverSocket.close()
-            println "[${serverSocket.getLocalSocketAddress()}] Server is down"
+            logger.debug "[${serverSocket.getLocalSocketAddress()}] Server is down"
         }catch(IOException e){
             e.printStackTrace()
             throw e
@@ -262,7 +267,7 @@ class SocketMan {
             byte[] bytes = (charset) ? msg.getBytes(charset) : msg.getBytes()
             os.write(bytes)
             os.flush()
-            println "Message To [${socket.getInetAddress()}:${socket.port}]"
+            logger.debug "Message To [${socket.getInetAddress()}:${socket.port}]"
         }catch(ConnectException ce){
             ce.printStackTrace()
         }catch(IOException ie){
@@ -310,7 +315,7 @@ class SocketMan {
 
             if (realBytes){
                 receivedMsg = (charset) ? new String(realBytes, charset) : new String(realBytes)
-                println "Message From [${socket.getInetAddress()}:${socket.port}]"
+                logger.debug "Message From [${socket.getInetAddress()}:${socket.port}]"
             }
 
         }catch(ConnectException ce){

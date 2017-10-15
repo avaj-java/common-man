@@ -3,6 +3,8 @@ package jaemisseo.man
 import groovy.sql.Sql
 import jaemisseo.man.bean.SqlSetup
 import jaemisseo.man.util.Util
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 import java.sql.SQLException
 import java.util.regex.Matcher
@@ -11,6 +13,8 @@ import java.util.regex.Matcher
  * Created by sujung on 2016-09-24.
  */
 class SqlMan extends SqlAnalMan{
+
+    final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     Sql sql
 
@@ -178,7 +182,7 @@ class SqlMan extends SqlAnalMan{
             connect(localOpt)
 
             //Collecting
-            println '- Collecting OBJECT from DB...'
+            logger.debug '- Collecting OBJECT from DB...'
             Map data = Util.startPrinter(3, 20, localOpt.modeSqlProgressBar)
             // - OBJECT
             existObjectList = sql.rows("SELECT OBJECT_NAME, OBJECT_TYPE, OWNER AS SCHEME FROM ALL_OBJECTS")
@@ -198,7 +202,7 @@ class SqlMan extends SqlAnalMan{
 
             //Checking
             // - Check Exist Object
-            println '- Check OBJECT...'
+            logger.debug '- Check OBJECT...'
             Util.eachWithTimeProgressBar(analysisResultList, 20, connectedOpt.modeSqlProgressBar){
                 SqlObject obj = it.item
                 int count = it.count
@@ -215,23 +219,23 @@ class SqlMan extends SqlAnalMan{
             }
             // - Check Exist TableSpace
             if (resultsForTablespace){
-                print '- Check TABLESPACE...'
+                logger.debug '- Check TABLESPACE...'
                 resultsForTablespace.each { SqlObject obj ->
                     obj.isExistOnDB = isExistOnDB(obj, existTablespaceList)
                     if (obj.isExistOnDB)
                         obj.warnningMessage = WARN_MSG_2
                 }
-                println ' DONE'
+                logger.debug ' DONE'
             }
             // - Check Exist User
             if (resultsForUser){
-                print '- Check USER...'
+                logger.debug '- Check USER...'
                 resultsForUser.each { SqlObject obj ->
                     obj.isExistOnDB = isExistOnDB(obj, existUserList)
                     if (obj.isExistOnDB)
                         obj.warnningMessage = WARN_MSG_2
                 }
-                println ' DONE'
+                logger.debug ' DONE'
             }
 
         }catch(Exception e){
@@ -269,7 +273,7 @@ class SqlMan extends SqlAnalMan{
 
     List<SqlObject> getAnalysisResultList(Matcher m){
         def resultList = []
-        println "- Replace Object Name..."
+        logger.debug "- Replace Object Name..."
         Util.eachWithTimeProgressBar( (m.findAll() as List), 20, connectedOpt.modeSqlProgressBar) { data ->
             String query = data.item
             int count = data.count
@@ -282,7 +286,7 @@ class SqlMan extends SqlAnalMan{
     void runSql(SqlSetup localOpt, List<SqlObject> analysisResultList){
         connect(localOpt)
         sql.withTransaction{
-            println "Executing Sqls..."
+            logger.debug "Executing Sqls..."
             Util.eachWithTimeProgressBar(analysisResultList, 20, connectedOpt.modeSqlProgressBar){ data ->
                 SqlObject result = data.item
                 int count = data.count
@@ -331,19 +335,19 @@ class SqlMan extends SqlAnalMan{
     SqlMan reportAnalysis(){
         List<String> warningList = getWarningList()
         warningList.each{
-            println it
+            logger.debug it
         }
         reportGeneratedQuerys()
         return this
     }
 
     SqlMan reportGeneratedQuerys(){
-        println ""
-        println ""
-        println "<QUERY>"
+        logger.debug ""
+        logger.debug ""
+        logger.debug "<QUERY>"
         analysisResultList.each{
-            println "\n[${it.sqlFileName}] ${it.seq} ${it.warnningMessage}"
-            println "${it.query}"
+            logger.debug "\n[${it.sqlFileName}] ${it.seq} ${it.warnningMessage}"
+            logger.debug "${it.query}"
         }
         return this
     }
@@ -353,34 +357,34 @@ class SqlMan extends SqlAnalMan{
      */
     SqlMan reportResult(){
         if (resultReportMap){
-            println ""
-            println ""
-            println "<REPORT>"
+            logger.debug ""
+            logger.debug ""
+            logger.debug "<REPORT>"
             Map mainReportMap = resultReportMap.findAll{ it.key != 'summary' }
             Map summaryReportMap = resultReportMap.summary
             if (mainReportMap){
-                println "---------------"
+                logger.debug "---------------"
                 int longestStringLength = Util.getLongestLength(mainReportMap.keySet().toList())
                 mainReportMap.each{
                     String item = it.key.toString().toUpperCase()
                     String spacesToLineUp = Util.getSpacesToLineUp(item, longestStringLength)
-                    println "${item}:${spacesToLineUp} ${it.value}"
+                    logger.debug "${item}:${spacesToLineUp} ${it.value}"
                 }
             }
 
             if (summaryReportMap){
-                println "---------------"
+                logger.debug "---------------"
                 int longestStringLength = Util.getLongestLength(summaryReportMap.keySet().toList())
                 summaryReportMap.each{
                     String item = it.key.toString().toUpperCase()
                     String spacesToLineUp = Util.getSpacesToLineUp(item, longestStringLength)
-                    println "${item}:${spacesToLineUp} ${it.value}"
+                    logger.debug "${item}:${spacesToLineUp} ${it.value}"
                 }
             }
 
-            println ""
-            println ""
-            println ""
+            logger.debug ""
+            logger.debug ""
+            logger.debug ""
         }
         return this
     }
