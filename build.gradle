@@ -52,11 +52,14 @@ dependencies {
 
     compile ( (rootProject?.findProject('common-util')) ? project(':common-util') : 'com.github.avaj-java:common-util:0.2.2' )
 
-    //JDBC
-    compile 'com.oracle:ojdbc6:11.2.0.3'
-    
     //GROOVY
     compile 'org.codehaus.groovy:groovy-all:2.1.3'
+
+    //SLF4j
+    compile 'org.slf4j:slf4j-api:1.7.7'
+
+    //JDBC
+    compile 'com.oracle:ojdbc6:11.2.0.3'
 
     //TEST
     testCompile 'junit:junit:4.11'
