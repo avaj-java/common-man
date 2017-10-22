@@ -24,6 +24,8 @@ class QuestionMan {
     List<String> validAnswerList = []
     List<String> invalidAnswerList = []
 
+    Closure beforeQuestionClosure
+    Closure afterQuestionClosure
 
     QuestionMan(){
     }
@@ -103,6 +105,19 @@ class QuestionMan {
     }
 
     /**
+     * Closure
+     */
+    QuestionMan setBeforeQuestionClosure(Closure closure){
+        beforeQuestionClosure = closure
+        return this
+    }
+
+    QuestionMan setAfterQuestionClosure(Closure closure){
+        afterQuestionClosure = closure
+        return this
+    }
+
+    /**
      * QUESTION
      */
     String question(){
@@ -140,7 +155,14 @@ class QuestionMan {
                 throw new Exception('So Many Not Good Answer. Please Correct Answer :) ')
 
             //Print Question
-            genQuestion(nowOpt).each{ logger.info it }
+            if (beforeQuestionClosure)
+                beforeQuestionClosure()
+            logger.info( genQuestion(nowOpt) )
+            if (afterQuestionClosure)
+                afterQuestionClosure()
+
+            //Print Selection
+            genSelection(nowOpt).each{ logger.info it }
 
             //Wait Your Input
             print "> "
@@ -160,7 +182,7 @@ class QuestionMan {
             //Check Answer
             logger.info "=> ${yourAnswer}\n"
             if (!isOk){
-                logger.error "!! Not Good Answer. Please Answer Angain"
+                logger.error "Not Good Answer. Please Answer Angain"
                 yourAnswer = ""
             }
 
@@ -171,14 +193,25 @@ class QuestionMan {
         return yourAnswer
     }
 
-    List<String> genQuestion(QuestionSetup nowOpt){
+    List<String> genQuestionAndSelection(QuestionSetup nowOpt){
         List<String> lineList = []
+        //Gen Question
+        lineList << genQuestion(nowOpt)
+        //Gen Selection
+        lineList.addAll(genSelection(nowOpt))
+        return lineList
+    }
+
+    String genQuestion(QuestionSetup nowOpt){
         String question = nowOpt.question
         String recommandAnswer = nowOpt.recommandAnswer ?: ''
+        String questionAndRecommandAnswer = "${question} [${recommandAnswer}]? "
+        return questionAndRecommandAnswer
+    }
+
+    List<String> genSelection(QuestionSetup nowOpt){
+        List<String> lineList = []
         Map descriptionMap = nowOpt.descriptionMap
-        //Gen Question
-        lineList << "${question} [${recommandAnswer}]? "
-        //Gen Selection
         if (descriptionMap){
             descriptionMap.sort{ a,b -> a.key <=> b.key }.each{
                 lineList << "  ${it.key}) ${it.value}"
