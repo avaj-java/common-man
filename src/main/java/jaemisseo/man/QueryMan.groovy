@@ -1011,7 +1011,6 @@ class QueryMan {
                     return rows(param, closure, result)
                 }
             }
-            e.printStackTrace()
             throw e
         }finally{
             disconnect()
@@ -1082,7 +1081,6 @@ class QueryMan {
                     return execute(param)
                 }
             }
-            e.printStackTrace()
             sql.rollback()
             throw e
         }finally{
@@ -1130,7 +1128,6 @@ class QueryMan {
                     }
                 }
             }catch(Exception e){
-                e.printStackTrace()
                 sql.rollback()
                 throw e
             }finally{

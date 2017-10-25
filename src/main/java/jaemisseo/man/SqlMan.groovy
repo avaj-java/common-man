@@ -239,7 +239,6 @@ class SqlMan extends SqlAnalMan{
             }
 
         }catch(Exception e){
-            e.printStackTrace()
             throw e
         }finally{
             close()

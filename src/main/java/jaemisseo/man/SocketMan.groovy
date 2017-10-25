@@ -142,7 +142,6 @@ class SocketMan {
             serverSocket = new ServerSocket(port)
             logger.debug "[${serverSocket.getLocalSocketAddress()}] Server is running"
         }catch(IOException e){
-            e.printStackTrace()
             throw e
         }finally{
 
