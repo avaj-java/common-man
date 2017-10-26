@@ -75,12 +75,20 @@ class VariableMan {
     /**
      * You Can Create Function's Properties With This Object
      */
-    class FuncObject{
-        String oneVal = ''
+    class OnePartObject {
+        String partValue = ''
         String valueCode = ''
         String substitutes = ''
+        String parsedValue = ''
         byte[] bytes
+        int startIndex = 0
+        int endIndex = 0
         int length = 0
+        int userSetLength = 0
+        int byteLength = 0
+        int charLength = 0
+        boolean isCode = false
+        boolean isExistCode = false
         boolean isOver = false
         String overValue = ''
         String funcNm = ''
@@ -96,9 +104,6 @@ class VariableMan {
 
     String patternToGetVariable = '[$][{][^{}]*\\w+[^{}]*[}]'     // If variable contains some word in ${} then convert to User Set Value or...
     String patternToGetMembers = '[(][^(]*[)]'
-    int allCharLength = 0
-    int allByteLength = 0
-    int allUserSetLength = 0
 
     /**
      * You Can Set Debug Mode To Watch Detail
@@ -170,6 +175,22 @@ class VariableMan {
 
     /**
      * You Can Put Variable
+     *  [ VariableName(String) : VariableValue(String) ]
+     *  Please Do Not Set These Names => 'date', 'random'
+     * @param variableStringMapToAdd
+     * @return
+     */
+    VariableMan delVariables(List<String> variableStringList){
+        if (variableStringList){
+            variableStringList.each{
+                this.variableStringMap.remove(it)
+            }
+        }
+        return this
+    }
+
+    /**
+     * You Can Put Variable
      *  [ VariableName(String) : Variable Function(Closure) ]
      *  Please Refer To getBasicVariableClosureMap()
      * @param variableFuncMapToPut
@@ -222,119 +243,176 @@ class VariableMan {
      * @throws java.lang.Exception
      */
     String parse(String codeRule, Map<String, String> variableStringMap) throws Exception{
-        validateCodeRule(codeRule)
-        ///// Get String In ${ } step by step
-        codeRule = codeRule.trim()
-        String resultStr = codeRule
-        Matcher matchedList = Pattern.compile(patternToGetVariable).matcher(codeRule)
-        matchedList.each{ String oneVal ->
-            FuncObject funcObj = new FuncObject()
-            funcObj.oneVal = oneVal
-
-            // 1. get String in ${ }
-            String content = oneVal.replaceFirst('[\$]', '').replaceFirst('\\{', '').replaceFirst('\\}', '')
-            validateFunc(content)
-
-            // 2. Analysis And Run Function
-            List<String> funcs = content.split('\\.')
-            int variableEndIndex = funcs.findIndexOf{ it.indexOf('(') != -1 }
-            int endIndex = funcs.size() -1
-            if (variableEndIndex != -1){
-                String variable = funcs[0..variableEndIndex].join('.')
-                if (variableEndIndex < endIndex)
-                    funcs = [variable] + funcs[variableEndIndex+1..endIndex]
-                else
-                    funcs = [content]
-            }else{
-                funcs = [content]
-            }
-
-            // If There are no LEFT or RIGHT FUNCTION => Set RIGHT FUNCTION
-            if ( containsIgnoreCase(funcs, 'LEFT(') || containsIgnoreCase(funcs, 'RIGHT(') ){
-            }else{
-                funcs << 'RIGHT()'
-            }
-            funcs.eachWithIndex{ String oneFunc, int procIdx ->
-                String funcNm = ""
-                String[] members = []
-                // get funcNm
-                def array = oneFunc.replaceFirst('\\(', ' ').split(' ')
-                array.eachWithIndex{ String el, int memIdx ->
-                    if (memIdx==0)
-                        funcNm = el
-                }
-                // get members
-                Matcher m = Pattern.compile(patternToGetMembers).matcher(oneFunc)
-                if (m){
-                    String member = m[0]
-                    members = member.substring(1, member.length() -1).split(',').collect{ it.trim() }
-                }
-                // run variable or func
-                if (funcNm){
-                    funcNm = funcNm.toUpperCase()
-                    funcObj.funcNm = funcNm
-                    funcObj.members = members
-                    // 1) Get Variable's Value
-                    if ( procIdx == 0){
-                        funcObj.valueCode = funcNm
-                        getVariableValue(funcObj, variableStringMap)
-
-                    // 2) Run Fucntions To Adjust Value
-                    }else if ( procIdx > 0 && containsKeyIgnoreCase(funcMap, funcNm) ){
-                        runFunc(funcObj)
-
-                    }else{
-                        throw new Exception( ErrorMessage.VAR4.msg, new Throwable("[${funcNm}]") )
-                    }
-
-                }else{
-//                maybe nothing is not bad
-//                    throw new Exception( ErrorMessage.VAR5.msg, new Throwable("[${oneVal}]") )
-                }
-
-            }
-
-            // 3. Replace One ${ }
-            if (modeExistCodeOnly && !funcObj.substitutes){
-            }else{
-//                String patternPrefix = '[$][{][^{}]*(?i)'
-//                String patternSurfix = '[^{}]*[}]'
-                String patternToGetVariable = funcObj.oneVal.replace('$','\\$').replace('{','\\{').replace('}','\\}').replace('(','\\(').replace(')','\\)').replace('.','\\.')
-                Matcher matchedTargetList = Pattern.compile(patternToGetVariable).matcher(resultStr)
-                if (matchedTargetList.size())
-                    resultStr = matchedTargetList.replaceAll(getRightReplacement(funcObj.substitutes))
-            }
+        List<OnePartObject> partObjectList = parsedDataList(codeRule, variableStringMap)
+        int allCharLength = 0
+        int allByteLength = 0
+        int allUserSetLength = 0
+        List parsedPartStringList = partObjectList.collect { OnePartObject partObj ->
             // CASE - DEBUG MODE
-            if (modeDebug && funcObj.substitutes){
-                byte[] bytes = (charset) ? funcObj.substitutes.getBytes(charset) : funcObj.substitutes.getBytes()
-                int userSetLength = funcObj.length
-                int byteLength = bytes.length
-                int charLength = funcObj.substitutes.length()
-                allUserSetLength += userSetLength
-                allByteLength += byteLength
-                allCharLength += charLength
-                logger.debug "////////// ${oneVal}"
-                logger.debug "[${funcObj.substitutes}]"
-                logger.debug "Length: ${charLength} / Byte: ${byteLength} / Your Set: ${userSetLength}"
-                if (userSetLength !=0 && userSetLength != byteLength){
+            if (modeDebug && partObj.substitutes){
+                allUserSetLength += partObj.userSetLength
+                allByteLength += partObj.byteLength
+                allCharLength += partObj.charLength
+                logger.debug "////////// ${partObj.partValue}"
+                logger.debug "[${partObj.substitutes}]"
+                logger.debug "Length: ${partObj.charLength} / Byte: ${partObj.byteLength} / Your Set: ${partObj.userSetLength}"
+                if (partObj.userSetLength !=0 && partObj.userSetLength != partObj.byteLength){
                     logger.debug "!!! !!! !!! !!! !!!"
                     logger.debug "!!! Not Matched !!!"
                     logger.debug "!!! !!! !!! !!! !!!"
                 }
             }
+            return partObj.parsedValue
         }
         if (modeDebug){
-            logger.debug ""
-            logger.debug "//////////////////////////////////////////////////"
-            logger.debug "////// ALL LENGTH ////////////////////////////////"
-            logger.debug "//////////////////////////////////////////////////"
-            logger.debug "SETUP LENGTH : ${allUserSetLength}"
-            logger.debug " BYTE LENGTH : ${allByteLength}"
-            logger.debug " CHAR LENGTH : ${allCharLength}"
-            logger.debug ""
+            println ""
+            println "//////////////////////////////////////////////////"
+            println "////// ALL LENGTH ////////////////////////////////"
+            println "//////////////////////////////////////////////////"
+            println "SETUP LENGTH : ${allUserSetLength}"
+            println " BYTE LENGTH : ${allByteLength}"
+            println " CHAR LENGTH : ${allCharLength}"
+            println ""
         }
-        return resultStr
+        return parsedPartStringList.join('')
     }
+
+    List<OnePartObject> parsedDataList(String codeRule){
+        return parsedDataList(codeRule, this.variableStringMap)
+    }
+
+    List<OnePartObject> parsedDataList(String codeRule, Map<String, String> variableStringMap){
+        validateCodeRule(codeRule)
+        ///// Get String In ${ } step by step
+        codeRule = codeRule.trim()
+        Matcher matchedList = Pattern.compile(patternToGetVariable).matcher(codeRule)
+
+        List<OnePartObject> partObjectList = []
+        List<String> splitWithCodeRuleList = codeRule.split(patternToGetVariable).toList()
+        List<String> codeList = matchedList.collect{ return it  }
+        int cnt = -1
+        codeList.each{ String code ->
+            cnt++
+            if (splitWithCodeRuleList && splitWithCodeRuleList[cnt]){
+                partObjectList << generateOnePartObjectForString(splitWithCodeRuleList[cnt])
+            }
+            partObjectList << generateOnePartObjectForVariable(code, variableStringMap)
+        }
+        cnt++
+        if (splitWithCodeRuleList && splitWithCodeRuleList[cnt]){
+            partObjectList << generateOnePartObjectForString(splitWithCodeRuleList[cnt])
+        }
+
+        int index = 0
+        partObjectList.each{ OnePartObject partObj ->
+            if (partObj.isCode){
+                if (!partObj.isExistCode && !partObj.substitutes){
+                    partObj.parsedValue = (modeExistCodeOnly && partObj.valueCode) ? partObj.partValue : ''
+                }else{
+                    partObj.parsedValue = partObj.substitutes
+                }
+            }else{
+                partObj.parsedValue = partObj.partValue
+            }
+            byte[] bytes = (charset) ? partObj.parsedValue.getBytes(charset) : partObj.parsedValue.getBytes()
+            partObj.userSetLength = partObj.length
+            partObj.byteLength = bytes.length
+            partObj.charLength = partObj.parsedValue.length()
+            partObj.startIndex = index
+            partObj.endIndex = index + partObj.charLength + (partObj.charLength == 0 ? 0 : -1)
+            index += partObj.parsedValue.length()
+        }
+        return partObjectList
+    }
+
+    OnePartObject generateOnePartObjectForString(String partValue){
+        return new OnePartObject(
+                partValue: partValue,
+                isCode: false,
+        )
+    }
+
+    OnePartObject generateOnePartObjectForVariable(String partValue, variableStringMap){
+        OnePartObject partObj = new OnePartObject()
+        partObj.partValue = partValue
+        partObj.isCode = true
+
+        // 1. get String in ${ }
+        String content = partValue.replaceFirst('[\$]', '').replaceFirst('\\{', '').replaceFirst('\\}', '')
+        validateFunc(content)
+
+        // 2. Analysis And Run Function
+        List<String> funcs = content.split('\\.')
+        int variableEndIndex = funcs.findIndexOf{ it.indexOf('(') != -1 }
+        int endIndex = funcs.size() -1
+        if (variableEndIndex != -1){
+            String variable = funcs[0..variableEndIndex].join('.')
+            if (variableEndIndex < endIndex)
+                funcs = [variable] + funcs[variableEndIndex+1..endIndex]
+            else
+                funcs = [content]
+        }else{
+            funcs = [content]
+        }
+
+        // If There are no LEFT or RIGHT FUNCTION => Set RIGHT FUNCTION
+        if ( containsIgnoreCase(funcs, 'LEFT(') || containsIgnoreCase(funcs, 'RIGHT(') ){
+        }else{
+            funcs << 'RIGHT()'
+        }
+        funcs.eachWithIndex{ String oneFunc, int procIdx ->
+            String funcNm = ""
+            String[] members = []
+            // get funcNm
+            def array = oneFunc.replaceFirst('\\(', ' ').split(' ')
+            array.eachWithIndex{ String el, int memIdx ->
+                if (memIdx==0)
+                    funcNm = el
+            }
+            // get members
+            Matcher m = Pattern.compile(patternToGetMembers).matcher(oneFunc)
+            if (m){
+                String member = m[0]
+                members = member.substring(1, member.length() -1).split(',').collect{ it.trim() }
+            }
+            // run variable or func
+            if (funcNm){
+                funcNm = funcNm.toUpperCase()
+                partObj.funcNm = funcNm
+                partObj.members = members
+                // 1) Get Variable's Value
+                if ( procIdx == 0){
+                    partObj.valueCode = funcNm
+                    getVariableValue(partObj, variableStringMap)
+
+                // 2) Run Fucntions To Adjust Value
+                }else if ( procIdx > 0 && containsKeyIgnoreCase(funcMap, funcNm) ){
+                    runFunc(partObj)
+
+                }else{
+                    throw new Exception( ErrorMessage.VAR4.msg, new Throwable("[${funcNm}]") )
+                }
+
+            }else{
+//                maybe nothing is not bad
+//                    throw new Exception( ErrorMessage.VAR5.msg, new Throwable("[${partValue}]") )
+            }
+        }
+        return partObj
+    }
+
+//    String removeSomeVariableCode(String codeRule, String code){
+//        String removedCode
+//        return removedCode
+//    }
+//
+//    String removeSomeVariableCode(String codeRule, List<String> codeList){
+//        String removedCode
+//        codeList.each{ String code ->
+//            removedCode = removeSomeVariableCode(codeRule, code)
+//        }
+//        return removedCode
+//    }
 
     String parseDefaultVariableOnly(String codeRule){
         return new VariableMan().setModeExistCodeOnly(true).parse(codeRule)
@@ -377,48 +455,52 @@ class VariableMan {
     }
 
 
-    void getVariableValue(FuncObject funcObj, Map<String, String> variableStringMap){
-        String funcNm = funcObj.funcNm
-        String[] members = funcObj.members
+    void getVariableValue(OnePartObject partObj, Map<String, String> variableStringMap){
+        String funcNm = partObj.funcNm
+        String[] members = partObj.members
         //Variable(default) - DATE, RANDOM
         Closure variableClosure = getIgnoreCase(variableClosureMap, funcNm)
         if (variableClosure){
-            variableClosure(funcObj)
+            variableClosure(partObj)
+            partObj.isExistCode = true
             return
         }
         //Variable(custom) - ? (from variableStringMap)
         String variableValue = getIgnoreCase(variableStringMap, funcNm)
         if (variableValue != null){
-            funcObj.substitutes = variableValue?:''
-            funcObj.bytes = (charset) ? funcObj.substitutes.getBytes(charset) : funcObj.substitutes.getBytes()
+            partObj.isExistCode = true
+            partObj.substitutes = variableValue?:''
+            partObj.bytes = (charset) ? partObj.substitutes.getBytes(charset) : partObj.substitutes.getBytes()
             if (members && members[0].matches('[0-9]*') ){
-                funcObj.length = members[0] ? Integer.parseInt(members[0]) : 0
-                if (funcObj.length > 0){
-                    int diff = funcObj.length - funcObj.bytes.length
+                partObj.length = members[0] ? Integer.parseInt(members[0]) : 0
+                if (partObj.length > 0){
+                    int diff = partObj.length - partObj.bytes.length
                     if (diff < 0){
-//                        funcObj.substitutes = funcObj.substitutes.substring(0, funcObj.length)
-                        funcObj.isOver = true
-                        funcObj.overValue = funcObj.substitutes
-                        funcObj.substitutes = (charset) ? new String(funcObj.bytes, 0, funcObj.length, charset) : new String(funcObj.bytes, 0, funcObj.length)
+//                        partObj.substitutes = partObj.substitutes.substring(0, partObj.length)
+                        partObj.isOver = true
+                        partObj.overValue = partObj.substitutes
+                        partObj.substitutes = (charset) ? new String(partObj.bytes, 0, partObj.length, charset) : new String(partObj.bytes, 0, partObj.length)
                     }
                 }else{
-                    funcObj.length = 0
+                    partObj.length = 0
                 }
             }else if (!members){
             }else{
-                throw new Exception( ErrorMessage.VAR3.msg, new Throwable("[${funcObj.oneVal}]") )
+                throw new Exception( ErrorMessage.VAR3.msg, new Throwable("[${partObj.partValue}]") )
             }
         //Variable(?) - (Not Matched)
         }else{
-            funcObj.length = (members && members[0]) ? Integer.parseInt(members[0]) : 0
+            partObj.isExistCode = false
+            partObj.substitutes = ''
+            partObj.length = (members && members[0]) ? Integer.parseInt(members[0]) : 0
         }
     }
 
 
-    void runFunc(FuncObject funcObj){
-        Closure closure = getIgnoreCase(funcMap, funcObj.funcNm)
+    void runFunc(OnePartObject partObj){
+        Closure closure = getIgnoreCase(funcMap, partObj.funcNm)
         if (closure)
-            closure(funcObj)
+            closure(partObj)
     }
 
 
@@ -436,7 +518,7 @@ class VariableMan {
      */
     Map<String, Closure> getBasicVariableClosureMap(){
         return [
-                'DATE': { FuncObject it ->
+                'DATE': { OnePartObject it ->
                     String[] members = it.members
                     String format = (members && members[0]) ? members[0] : 'yyyyMMdd'
                     if (format == 'long'){
@@ -448,7 +530,7 @@ class VariableMan {
                     }
 
                 },
-                'RANDOM': { FuncObject it ->
+                'RANDOM': { OnePartObject it ->
                     String[] members = it.members
                     int length = (members && members[0]) ? Integer.parseInt(members[0]) : 0
                     String numStr = "1"
@@ -479,7 +561,7 @@ class VariableMan {
      */
     Map<String, Closure> getBasicFuncMap(){
         return [
-                'START': { FuncObject it ->
+                'START': { OnePartObject it ->
                     if (it.length && it.members ){
                         long nextSeq = Long.parseLong(it.substitutes)
                         long standardStartNum = Long.parseLong(it.members[0])
@@ -487,7 +569,7 @@ class VariableMan {
                             it.substitutes = it.members[0]
                     }
                 },
-                'LEFT': { FuncObject it ->
+                'LEFT': { OnePartObject it ->
                     if (it.length && it.members ){
                         int diff = -1
                         int tryRemoveIdx = 0
@@ -507,7 +589,7 @@ class VariableMan {
                         }
                     }
                 },
-                'RIGHT': { FuncObject it ->
+                'RIGHT': { OnePartObject it ->
                     if (it.length && it.members ){
                         int diff = -1
                         int tryRemoveIdx = 0
@@ -527,20 +609,20 @@ class VariableMan {
                         }
                     }
                 },
-                'ERROR': { FuncObject it ->
+                'ERROR': { OnePartObject it ->
                     if (it.length && it.members ){
                         String errorNm = it.members[0].toUpperCase()
                         if (errorNm.equals('OVER') && it.isOver)
-                            throw new Exception( "${ErrorMessage.VAR2.msg} - Rule is '${it.oneVal}', But ${it.valueCode}'s value is ${it.overValue}", new Throwable(" Seted Rule is '${it.oneVal}', But ${it.valueCode}'s value is ${it.overValue}") )
+                            throw new Exception( "${ErrorMessage.VAR2.msg} - Rule is '${it.partValue}', But ${it.valueCode}'s value is ${it.overValue}", new Throwable(" Seted Rule is '${it.partValue}', But ${it.valueCode}'s value is ${it.overValue}") )
                     }
                 },
-                'LOWER': { FuncObject it ->
+                'LOWER': { OnePartObject it ->
                     it.substitutes = (it.substitutes) ? it.substitutes.toLowerCase() : ""
                 },
-                'UPPER': { FuncObject it ->
+                'UPPER': { OnePartObject it ->
                     it.substitutes = (it.substitutes) ? it.substitutes.toUpperCase() : ""
                 },
-                'NUMBERONLY': { FuncObject it ->
+                'NUMBERONLY': { OnePartObject it ->
                     it.substitutes = (it.substitutes) ? it.substitutes.replaceAll("[^0-9.]", "") : ""
                 }
         ]
