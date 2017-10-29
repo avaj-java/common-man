@@ -119,8 +119,8 @@ class PropMan {
     }
 
     def parse(String key, Closure beforeClosure){
-        String val = properties[key]
-        if (val){
+        def val = properties[key]
+        if (val && val instanceof String){
             if (beforeClosure || beforeGetClosure){
                 if (beforeClosure)
                     beforeClosure(key, val)
@@ -128,7 +128,7 @@ class PropMan {
                     beforeGetClosure(key, val)
                 val = properties[key]
             }
-            String valToCompare = val.trim()
+            String valToCompare = val.toString().trim()
             int lastIdx = valToCompare.length() -1
             if ( (valToCompare.indexOf('[') == 0 && valToCompare.lastIndexOf(']') == lastIdx) || (valToCompare.indexOf('{') == 0 && valToCompare.lastIndexOf('}') == lastIdx) ){
                 def obj = new JsonSlurper().parseText(val)
