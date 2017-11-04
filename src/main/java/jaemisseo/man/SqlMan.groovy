@@ -245,9 +245,16 @@ class SqlMan extends SqlAnalMan{
         }
 
         //Error Check
-        List warnList = analysisResultList.findAll{ it.warnningMessage }
-        if ( !localOpt.modeSqlIgnoreErrorCheckBefore && warnList )
-            throw new SQLException(warnList[0].warnningMessage)
+        List<SqlAnalMan.SqlObject> warnList = analysisResultList.findAll{ it.warnningMessage }
+        if (!localOpt.modeSqlIgnoreErrorCheckBefore && warnList){
+            //Mode Ignore Error (Already Exsist)
+            if (localOpt.modeSqlIgnoreErrorAlreadyExist){
+                if (warnList.findAll{ it.warnningMessage != WARN_MSG_2 })
+                    throw new SQLException(warnList[0].warnningMessage)
+            }else{
+                throw new SQLException(warnList[0].warnningMessage)
+            }
+        }
 
         return this
     }
@@ -287,17 +294,22 @@ class SqlMan extends SqlAnalMan{
         sql.withTransaction{
             logger.debug "Executing Sqls..."
             Util.eachWithTimeProgressBar(analysisResultList, 20, connectedOpt.modeSqlProgressBar){ data ->
-                SqlObject result = data.item
+                SqlObject sqlObj = data.item
                 int count = data.count
                 try{
-                    String query = result.query
+                    String query = sqlObj.query
                     sql.execute(removeLastSemicoln(removeLastSlash(query)))
-                    result.isOk = true
+                    sqlObj.isOk = true
                 }catch(Exception e){
-                    result.isOk = false
-                    result.error = e
-                    if (!localOpt.modeSqlIgnoreErrorExecute)
-                        throw e
+                    sqlObj.isOk = false
+                    sqlObj.error = e
+                    if (!localOpt.modeSqlIgnoreErrorExecute){
+                        //Mode Ignore Error (Already Exsists)
+                        if (localOpt.modeSqlIgnoreErrorAlreadyExist && e.message.indexOf('ORA-00955') != -1){
+                        }else{
+                            throw e
+                        }
+                    }
                 }
             }
         }
