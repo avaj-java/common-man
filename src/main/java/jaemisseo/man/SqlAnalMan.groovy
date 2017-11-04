@@ -136,6 +136,8 @@ class SqlAnalMan {
             objectType = 'SEQUENCE'
         }else if (getMatchedList(query, getSqlPattern(SqlMan.CREATE_FUNCTION)).size()){
             objectType = 'FUNCTION'
+        }else if (getMatchedList(query, getSqlPattern(SqlMan.CREATE_JAVA)).size()){
+            objectType = 'JAVA'
         }else if (getMatchedList(query, getSqlPattern(SqlMan.CREATE_TABLESPACE)).size()){
             objectType = 'TABLESPACE'
         }else if (getMatchedList(query, getSqlPattern(SqlMan.CREATE_USER)).size()){
@@ -155,11 +157,24 @@ class SqlAnalMan {
     }
 
     String addOR(String pattern, def objs, String patternToAdd){
-        if (!pattern) pattern = ""
-        objs.each{ String obj ->
-            if (pattern) pattern += "|"
-            pattern += patternToAdd.replace("{{1}}", obj)
+        if (!pattern)
+            pattern = ""
+        if (objs){
+            objs.each{ String obj ->
+                if (pattern)
+                    pattern += "|"
+                pattern += patternToAdd.replace("{{1}}", obj)
+            }
+        }else{
+            if (pattern)
+                pattern += "|"
+            pattern += patternToAdd
         }
+        return pattern
+    }
+
+    String addOR(String pattern, String patternToAdd){
+        pattern = pattern ? (pattern+ "|" +patternToAdd) : patternToAdd
         return pattern
     }
 
@@ -184,43 +199,46 @@ class SqlAnalMan {
                     pattern = getSqlPattern([SqlMan.CREATE, SqlMan.INSERT, SqlMan.UPDATE, SqlMan.ALTER, SqlMan.COMMENT, SqlMan.GRANT])
                     break
                 case SqlMan.CREATE:
-                    pattern = getSqlPattern([SqlMan.CREATE_TABLE, SqlMan.CREATE_INDEX, SqlMan.CREATE_VIEW, SqlMan.CREATE_SEQUENCE, SqlMan.CREATE_FUNCTION, SqlMan.CREATE_TABLESPACE, SqlMan.CREATE_USER])
+                    pattern = getSqlPattern([SqlMan.CREATE_TABLE, SqlMan.CREATE_INDEX, SqlMan.CREATE_VIEW, SqlMan.CREATE_SEQUENCE, SqlMan.CREATE_FUNCTION, SqlMan.CREATE_JAVA, SqlMan.CREATE_TABLESPACE, SqlMan.CREATE_USER])
                     break
                 case SqlMan.CREATE_TABLE:
-                    pattern = addOR(pattern, ['TABLE'], "CREATE\\s{1,2}.{0,20}\\s{0,2}{{1}}\\s{1,2}[^;]{1,20000}[;]{1}")
+                    pattern = addOR(pattern, "CREATE\\s+[^;]{0,40}TABLE\\s+(?:[^;']|(?:'[^']*'))+[;]{1}")
                     break
                 case SqlMan.CREATE_INDEX:
-                    pattern = addOR(pattern, ['INDEX'], "CREATE\\s{1,2}.{0,20}\\s{0,2}{{1}}\\s{1,2}[^;]{1,20000}[;]{1}")
+                    pattern = addOR(pattern, "CREATE\\s+[^;]{0,40}INDEX\\s+(?:[^;']|(?:'[^']*'))+[;]{1}")
                     break
                 case SqlMan.CREATE_VIEW:
-                    pattern = addOR(pattern, ['VIEW'], "CREATE\\s{1,2}.{0,20}\\s{0,2}{{1}}\\s{1,2}[^;]{1,50000}[;]{1}")
+                    pattern = addOR(pattern, "CREATE\\s+[^;]{0,40}VIEW\\s+(?:[^;']|(?:'[^']*'))+[;]{1}")
                     break
                 case SqlMan.CREATE_SEQUENCE:
-                    pattern = addOR(pattern, ['SEQUENCE'], "CREATE\\s{1,2}.{0,20}\\s{0,2}{{1}}\\s{1,2}[^;]{1,20000}[;]{1}")
+                    pattern = addOR(pattern, "CREATE\\s+[^;]{0,40}SEQUENCE\\s+(?:[^;']|(?:'[^']*'))+[;]{1}")
                     break
                 case SqlMan.CREATE_FUNCTION:
-                    pattern = addOR(pattern, ['FUNCTION'], "CREATE\\s{1,2}.{0,20}\\s{0,2}{{1}}\\s{1,2}[^/]{1,10000}BEGIN\\s+[^/]{1,10000}[;]{1}\\s*[/]{1}")
+                    pattern = addOR(pattern, "CREATE\\s+[^/]{0,40}\\s+FUNCTION\\s+(?:[^/']|(?:'[^']*'))+RETURN(?:[^/'\"]|(?:'[^']*')|(?:\"[^\"]*\"))+[/]{1}")
+                    break
+                case SqlMan.CREATE_JAVA:
+                    pattern = addOR(pattern, "CREATE\\s+[^/]{0,40}\\s+JAVA\\s+(?:SOURCE|RESOURCE|CLASS)(?:[^/\"]|(?:\"[^\"]*\"))+[/]{1}")
                     break
                 case SqlMan.CREATE_TABLESPACE:
-                    pattern = addOR(pattern, ['TABLESPACE'], "CREATE\\s{1,2}.{0,20}\\s{0,2}{{1}}\\s{1,2}[^;]{1,50000}[;]{1}")
+                    pattern = addOR(pattern, "CREATE\\s+[^;]{0,40}TABLESPACE\\s+(?:[^;']|(?:'[^']*'))+[;]{1}")
                     break
                 case SqlMan.CREATE_USER:
-                    pattern = addOR(pattern, ['USER'], "CREATE\\s{1,2}.{0,20}\\s{0,2}{{1}}\\s{1,2}[^;]{1,50000}[;]{1}")
+                    pattern = addOR(pattern, "CREATE\\s+[^;]{0,40}USER\\s+(?:[^;'\"]|(?:'[^']*')|(?:\"[^\"]*\"))+[;]{1}")
                     break
                 case SqlMan.INSERT:
-                    pattern = addOR(pattern, ['INSERT'], "{{1}}\\s{1,2}.{0,20}\\s{0,2}\\s{1,2}[^;]{1,20000}[;]{1}")
+                    pattern = addOR(pattern, "INSERT\\s+[^;]{0,40}\\s+(?:[^;']|(?:'[^']*'))+[;]{1}")
                     break
                 case SqlMan.UPDATE:
-                    pattern = addOR(pattern, ['UPDATE'], "{{1}}\\s{1,2}.{0,20}\\s{0,2}\\s{1,2}[^;]{1,20000}[;]{1}")
+                    pattern = addOR(pattern, "UPDATE\\s+[^;]{0,40}\\s+(?:[^;']|(?:'[^']*'))+[;]{1}")
                     break
                 case SqlMan.ALTER:
-                    pattern = addOR(pattern, ['ALTER'], "{{1}}\\s{1,2}.{0,20}\\s{0,2}\\s{1,2}[^;]{1,20000}[;]{1}")
+                    pattern = addOR(pattern, "ALTER\\s+[^;]{0,40}\\s+(?:[^;']|(?:'[^']*'))+[;]{1}")
                     break
                 case SqlMan.COMMENT:
-                    pattern = addOR(pattern, ['COMMENT'], "{{1}}\\s{1,2}.{0,20}\\s{0,2}\\s{1,2}[^;]{1,20000}[;]{1}")
+                    pattern = addOR(pattern, "COMMENT\\s+[^;]{0,40}\\s+(?:[^;']|(?:'[^']*'))+[;]{1}")
                     break
                 case SqlMan.GRANT:
-                    pattern = addOR(pattern, ['GRANT'], "{{1}}\\s{1,2}.{0,20}\\s{0,2}\\s{1,2}[^;]{1,20000}[;]{1}")
+                    pattern = addOR(pattern, "GRANT\\s+[^;]{0,40}\\s+(?:[^;']|(?:'[^']*'))+[;]{1}")
                     break
                 default:
                     break
