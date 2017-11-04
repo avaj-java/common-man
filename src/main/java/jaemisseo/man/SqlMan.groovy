@@ -39,7 +39,7 @@ class SqlMan extends SqlAnalMan{
     public static final int CREATE_FUNCTION = 15
     public static final int CREATE_TABLESPACE = 16
     public static final int CREATE_USER = 17
-    public static final int CREATE_JAVA = 17
+    public static final int CREATE_JAVA = 18
     public static final int ALTER = 20
     public static final int ALTER_TABLE = 21
     public static final int ALTER_USER = 22
