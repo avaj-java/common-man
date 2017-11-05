@@ -131,7 +131,7 @@ class PropMan {
             String valToCompare = val.toString().trim()
             int lastIdx = valToCompare.length() -1
             if ( (valToCompare.indexOf('[') == 0 && valToCompare.lastIndexOf(']') == lastIdx) || (valToCompare.indexOf('{') == 0 && valToCompare.lastIndexOf('}') == lastIdx) ){
-                val = val.toString().replace('\\', '\\\\')
+//                val = val.toString().replace('\\', '\\\\')
                 def obj = new JsonSlurper().parseText(val)
                 if (obj)
                     return obj
