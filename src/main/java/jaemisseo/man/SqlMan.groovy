@@ -298,8 +298,19 @@ class SqlMan extends SqlAnalMan{
                 SqlObject sqlObj = data.item
                 int count = data.count
                 try{
-                    String query = sqlObj.query
-                    sql.execute(removeLastSemicoln(removeLastSlash(query)))
+                    String query = removeLastSemicoln(removeLastSlash(sqlObj.query))
+                    //- CREATE JAVA
+                    if (sqlObj.objectType == 'JAVA'){
+                        query = """
+                        DECLARE
+                            V_SQL_TEXT CLOB := '${query}';
+                        BEGIN
+                          EXECUTE IMMEDIATE V_SQL_TEXT;
+                        END;
+                        """
+                    }
+                    //- RUN
+                    sql.execute(query)
                     sqlObj.isOk = true
                 }catch(Exception e){
                     sqlObj.isOk = false
@@ -331,11 +342,11 @@ class SqlMan extends SqlAnalMan{
         this.resultReportMap = [
 //                option      :optionList.join(' | '),
 //                pattern     :patternToGetQuery,
-                matchedCount  :results.size(),
-                succeededCount:results.findAll{ it.isOk }.size(),
-                failedCount   :results.findAll{ !it.isOk }.size(),
-                summary     :getSummary(results).findAll{ it.value.all > 0 },
-//                analysisResultList:analysisResultList
+                matchedCount    :results.size(),
+                succeededCount  :results.findAll{ it.isOk }.size(),
+                failedCount     :results.findAll{ !it.isOk }.size(),
+                summary         :generateSummary(results).findAll{ it.value.all > 0 },
+//                analysisResultList    :analysisResultList
         ]
     }
 
@@ -368,37 +379,48 @@ class SqlMan extends SqlAnalMan{
      * Report 'SQL Result' With Console
      */
     SqlMan reportResult(){
-        if (resultReportMap){
-            logger.debug ""
-            logger.debug ""
-            logger.debug "<REPORT>"
-            Map mainReportMap = resultReportMap.findAll{ it.key != 'summary' }
-            Map summaryReportMap = resultReportMap.summary
-            if (mainReportMap){
-                logger.debug "---------------"
-                int longestStringLength = Util.getLongestLength(mainReportMap.keySet().toList())
-                mainReportMap.each{
-                    String item = it.key.toString().toUpperCase()
-                    String spacesToLineUp = Util.getSpacesToLineUp(item, longestStringLength)
-                    logger.debug "${item}:${spacesToLineUp} ${it.value}"
-                }
+        List<String> reportLineList = generateResultReportSummaryLineList()
+        if (reportLineList){
+            reportLineList.each{
+                logger.debug it
             }
-
-            if (summaryReportMap){
-                logger.debug "---------------"
-                int longestStringLength = Util.getLongestLength(summaryReportMap.keySet().toList())
-                summaryReportMap.each{
-                    String item = it.key.toString().toUpperCase()
-                    String spacesToLineUp = Util.getSpacesToLineUp(item, longestStringLength)
-                    logger.debug "${item}:${spacesToLineUp} ${it.value}"
-                }
-            }
-
             logger.debug ""
             logger.debug ""
             logger.debug ""
         }
         return this
+    }
+
+    List<String> generateResultReportSummaryLineList(){
+        List<String> resultReportLineList = []
+        if (resultReportMap) {
+            resultReportLineList << ""
+            resultReportLineList << ""
+            resultReportLineList << "<REPORT>"
+            Map mainReportMap = resultReportMap.findAll { it.key != 'summary' }
+            Map summaryReportMap = resultReportMap.summary
+            if (mainReportMap) {
+                resultReportLineList << "---------------"
+                int longestStringLength = Util.getLongestLength(mainReportMap.keySet().toList())
+                mainReportMap.each {
+                    String item = it.key.toString().toUpperCase()
+                    String spacesToLineUp = Util.getSpacesToLineUp(item, longestStringLength)
+                    resultReportLineList << "${item}:${spacesToLineUp} ${it.value}"
+                }
+            }
+
+            if (summaryReportMap) {
+                resultReportLineList << "---------------"
+                int longestStringLength = Util.getLongestLength(summaryReportMap.keySet().toList())
+                summaryReportMap.each {
+                    String item = it.key.toString().toUpperCase()
+                    String spacesToLineUp = Util.getSpacesToLineUp(item, longestStringLength)
+                    resultReportLineList << "${item}:${spacesToLineUp} ${it.value}"
+                }
+            }
+        }
+
+        return resultReportLineList
     }
 
 
@@ -436,14 +458,15 @@ class SqlMan extends SqlAnalMan{
 
 
 
-    Map getSummary(List<SqlObject> resultList){
-        def createTableList = resultList.findAll{ it.commandType.equalsIgnoreCase('CREATE') && it.objectType .equalsIgnoreCase("TABLE") }
-        def createIndexList = resultList.findAll{ it.commandType.equalsIgnoreCase('CREATE') && it.objectType .equalsIgnoreCase("INDEX") }
-        def createViewList = resultList.findAll{ it.commandType.equalsIgnoreCase('CREATE') && it.objectType .equalsIgnoreCase("VIEW") }
-        def createSequenceList = resultList.findAll{ it.commandType.equalsIgnoreCase('CREATE') && it.objectType .equalsIgnoreCase("SEQUENCE") }
-        def createFunctionList = resultList.findAll{ it.commandType.equalsIgnoreCase('CREATE') && it.objectType .equalsIgnoreCase("FUNCTION") }
-        def createTablespaceList = resultList.findAll{ it.commandType.equalsIgnoreCase('CREATE') && it.objectType .equalsIgnoreCase("TABLESPACE") }
-        def createUserList = resultList.findAll{ it.commandType.equalsIgnoreCase('CREATE') && it.objectType .equalsIgnoreCase("USER") }
+    Map generateSummary(List<SqlObject> resultList){
+        def createTableList = resultList.findAll{ it.commandType.equalsIgnoreCase('CREATE') && it.objectType.equalsIgnoreCase("TABLE") }
+        def createIndexList = resultList.findAll{ it.commandType.equalsIgnoreCase('CREATE') && it.objectType.equalsIgnoreCase("INDEX") }
+        def createViewList = resultList.findAll{ it.commandType.equalsIgnoreCase('CREATE') && it.objectType.equalsIgnoreCase("VIEW") }
+        def createSequenceList = resultList.findAll{ it.commandType.equalsIgnoreCase('CREATE') && it.objectType.equalsIgnoreCase("SEQUENCE") }
+        def createFunctionList = resultList.findAll{ it.commandType.equalsIgnoreCase('CREATE') && it.objectType.equalsIgnoreCase("FUNCTION") }
+        def createTablespaceList = resultList.findAll{ it.commandType.equalsIgnoreCase('CREATE') && it.objectType.equalsIgnoreCase("TABLESPACE") }
+        def createUserList = resultList.findAll{ it.commandType.equalsIgnoreCase('CREATE') && it.objectType.equalsIgnoreCase("USER") }
+        def createJavaList = resultList.findAll{ it.commandType.equalsIgnoreCase('CREATE') && it.objectType.equalsIgnoreCase("JAVA") }
         def alterList = resultList.findAll{ it.commandType.equalsIgnoreCase('ALTER') }
         def commentList = resultList.findAll{ it.commandType.equalsIgnoreCase('COMMENT') }
         def grantList = resultList.findAll{ it.commandType.equalsIgnoreCase('GRANT') }
@@ -486,6 +509,11 @@ class SqlMan extends SqlAnalMan{
                         all: createUserList.size(),
                         o: createUserList.findAll{ it.isOk }.size(),
                         x: createUserList.findAll{ !it.isOk }.size()
+                ],
+                'create java':[
+                        all: createJavaList.size(),
+                        o: createJavaList.findAll{ it.isOk }.size(),
+                        x: createJavaList.findAll{ !it.isOk }.size()
                 ],
                 'alter':[
                         all: alterList.size(),
