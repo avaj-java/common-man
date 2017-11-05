@@ -79,7 +79,7 @@ class SqlAnalMan {
 
 
     // Analysis Sql Query
-    SqlObject getAnalysisObject(String query){
+    SqlObject getAnalyzedObject(String query){
         SqlObject sqlObj = new SqlObject()
 //        String queryToCompare = query.replace(")", " ) ").replace("(", " ( ").replaceAll("[,]", " , ").replaceAll("[;]", " ;").replaceAll(/\s{2,}/, " ")
         String sp = "{#-%}"
@@ -97,6 +97,9 @@ class SqlAnalMan {
             setQuery(query)
             arrayToCompare = queryToCompare.split("([{][#][-][%][}])+")
             commandType = arrayToCompare[0].toUpperCase()
+            if (['DECLARE','BEGIN'].contains(commandType)){
+                setCommandType('PLSQL')
+            }
         }
 
         switch (sqlObj.commandType){
@@ -117,6 +120,15 @@ class SqlAnalMan {
                 break
             case 'GRANT':
                 sqlObj = analGrant(sqlObj)
+                break
+            case 'PLSQL':
+                sqlObj = analPlsql(sqlObj)
+                break
+            case 'SELECT':
+                sqlObj = analSelect(sqlObj)
+                break
+            case 'DELETE':
+                sqlObj = analDelete(sqlObj)
                 break
             default:
                 break
@@ -146,33 +158,6 @@ class SqlAnalMan {
         return objectType
     }
 
-
-
-    void addOR(def objs, String pattern){
-        if (!this.patternToGetQuery) this.patternToGetQuery = ""
-        objs.each{ String obj ->
-            if (this.patternToGetQuery) this.patternToGetQuery += "|"
-            this.patternToGetQuery += pattern.replace("{{1}}", obj)
-        }
-    }
-
-    String addOR(String pattern, def objs, String patternToAdd){
-        if (!pattern)
-            pattern = ""
-        if (objs){
-            objs.each{ String obj ->
-                if (pattern)
-                    pattern += "|"
-                pattern += patternToAdd.replace("{{1}}", obj)
-            }
-        }else{
-            if (pattern)
-                pattern += "|"
-            pattern += patternToAdd
-        }
-        return pattern
-    }
-
     String addOR(String pattern, String patternToAdd){
         pattern = pattern ? (pattern+ "|" +patternToAdd) : patternToAdd
         return pattern
@@ -196,7 +181,10 @@ class SqlAnalMan {
         targetList.each{
             switch (it){
                 case SqlMan.ALL:
-                    pattern = getSqlPattern([SqlMan.CREATE, SqlMan.INSERT, SqlMan.UPDATE, SqlMan.ALTER, SqlMan.COMMENT, SqlMan.GRANT])
+                    pattern = getSqlPattern([SqlMan.CREATE, SqlMan.INSERT, SqlMan.UPDATE, SqlMan.ALTER, SqlMan.COMMENT, SqlMan.GRANT, SqlMan.DELETE, SqlMan.PLSQL])
+                    break
+                case SqlMan.ALL_WITHOUT_PLSQL:
+                    pattern = getSqlPattern([SqlMan.CREATE, SqlMan.INSERT, SqlMan.UPDATE, SqlMan.ALTER, SqlMan.COMMENT, SqlMan.GRANT, SqlMan.DELETE])
                     break
                 case SqlMan.CREATE:
                     pattern = getSqlPattern([SqlMan.CREATE_TABLE, SqlMan.CREATE_INDEX, SqlMan.CREATE_VIEW, SqlMan.CREATE_SEQUENCE, SqlMan.CREATE_FUNCTION, SqlMan.CREATE_JAVA, SqlMan.CREATE_TABLESPACE, SqlMan.CREATE_USER])
@@ -239,6 +227,15 @@ class SqlAnalMan {
                     break
                 case SqlMan.GRANT:
                     pattern = addOR(pattern, "GRANT\\s+[^;]{0,40}\\s+(?:[^;']|(?:'[^']*'))+[;]{1}")
+                    break
+                case SqlMan.PLSQL:
+                    pattern = addOR(pattern, "(?:DECLARE|BEGIN)\\s+(?:[^/']|(?:'[^']*'))+\\s+END\\s*;\\s*[/]{1}")
+                    break
+                case SqlMan.SELECT:
+                    pattern = addOR(pattern, "SELECT\\s+(?:[^;'()]|(?:'[^']*')|(?:[(][^()]*[)]))+")
+                    break
+                case SqlMan.DELETE:
+                    pattern = addOR(pattern, "DELETE\\s+(?:[^;']|(?:'[^']*'))+[;]{1}")
                     break
                 default:
                     break
@@ -532,6 +529,83 @@ class SqlAnalMan {
         return analObjectName(obj)
     }
 
+    /*************************
+     *  SELECT
+     *************************/
+    SqlObject analSelect(SqlObject obj){
+        List<String> words = obj.arrayToCompare
+        obj.objectType = ''
+        words.eachWithIndex{ String word, int idx ->
+            if (word.equalsIgnoreCase("FROM") || word.equalsIgnoreCase("JOIN")){
+                int i = idx
+                int stepi = 0
+                int notPairCnt = 0
+                int notPairQuote = 0
+                String searchWord
+                while(words[++i] != null){
+                    searchWord = words[i]
+                    notPairQuote += searchWord.count("'")
+                    if (searchWord.equals("(") && notPairQuote % 2 == 0)
+                        notPairCnt++
+                    if (searchWord.equals(")") && notPairQuote % 2 == 0)
+                        notPairCnt--
+                    if (notPairCnt > 0 || notPairQuote % 2 != 0){
+                        continue
+                    }else if (notPairCnt < 0){
+                        break
+                    }else if (notPairCnt == 0){
+                        stepi++
+                        if (searchWord.equals(",")){
+                            stepi = 0
+                        }else if (stepi == 1){
+                            obj.tableNameIdxs << i
+                        }else if (stepi > 1 && searchWord.toUpperCase() in ["WHERE", "ORDER", "GROUP"])
+                            break
+                    }
+                }
+            }
+        }
+        return analObjectName(obj)
+    }
+
+    /*************************
+     *  DELETE
+     *************************/
+    SqlObject analDelete(SqlObject obj){
+        List<String> words = obj.arrayToCompare
+        obj.objectType = 'TABLE'
+        words.eachWithIndex{ String word, int idx ->
+            if (word.equalsIgnoreCase("FROM") || word.equalsIgnoreCase("JOIN")){
+                int i = idx
+                int stepi = 0
+                int notPairCnt = 0
+                int notPairQuote = 0
+                String searchWord
+                while(words[++i] != null){
+                    searchWord = words[i]
+                    notPairQuote += searchWord.count("'")
+                    if (searchWord.equals("(") && notPairQuote % 2 == 0)
+                        notPairCnt++
+                    if (searchWord.equals(")") && notPairQuote % 2 == 0)
+                        notPairCnt--
+                    if (notPairCnt > 0 || notPairQuote % 2 != 0){
+                        continue
+                    }else if (notPairCnt < 0){
+                        break
+                    }else if (notPairCnt == 0){
+                        stepi++
+                        if (searchWord.equals(",")){
+                            stepi = 0
+                        }else if (stepi == 1){
+                            obj.tableNameIdxs << i
+                        }else if (stepi > 1 && searchWord.toUpperCase() in ["WHERE", "ORDER", "GROUP"])
+                            break
+                    }
+                }
+            }
+        }
+        return analObjectName(obj)
+    }
 
 
     /*************************
@@ -584,16 +658,27 @@ class SqlAnalMan {
         return analObjectName(obj)
     }
 
+    /*************************
+     *  PLSQL
+     *************************/
+    SqlObject analPlsql(SqlObject obj){
+        List<String> words = obj.arrayToCompare
+        obj.objectType = 'PLSQL'
+        return obj
+    }
+
 
 
     SqlObject analObjectName(SqlObject obj){
-        String objectName = obj.arrayToCompare[obj.objectNameIdx]
-        if (objectName.indexOf('.') != -1){
-            def array = objectName.split('[.]')
-            obj.schemeName = array[0]
-            obj.objectName = array[1]
-        }else{
-            obj.objectName = objectName
+        if (obj.objectNameIdx){
+            String objectName = obj.arrayToCompare[obj.objectNameIdx]
+            if (objectName.indexOf('.') != -1){
+                def array = objectName.split('[.]')
+                obj.schemeName = array[0]
+                obj.objectName = array[1]
+            }else{
+                obj.objectName = objectName
+            }
         }
         return obj
     }
@@ -723,8 +808,6 @@ class SqlAnalMan {
                     obj.objectName = obj.sequenceName
             }
         }
-        obj.sqlFileName = sqlFileName
-        obj.seq = seq
         obj.query = words.join(" ")
         return obj
     }

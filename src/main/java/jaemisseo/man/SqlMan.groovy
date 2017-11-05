@@ -31,6 +31,7 @@ class SqlMan extends SqlAnalMan{
     public static final String TIBERO = "TIBERO"
 
     public static final int ALL = 0
+    public static final int ALL_WITHOUT_PLSQL = 1
     public static final int CREATE = 10
     public static final int CREATE_TABLE = 11
     public static final int CREATE_INDEX = 12
@@ -47,6 +48,10 @@ class SqlMan extends SqlAnalMan{
     public static final int UPDATE = 40
     public static final int COMMENT = 50
     public static final int GRANT = 60
+    public static final int PLSQL = 70
+    public static final int SELECT = 80
+    public static final int DELETE = 90
+
 
     public static final int IGNORE_CHECK = 1
     public static final int CHECK_BEFORE_AND_STOP = 2
@@ -164,11 +169,15 @@ class SqlMan extends SqlAnalMan{
         return this
     }
 
+    List<String> getMatchedQueryList(){
+        Matcher m = getMatchedList(this.sqlContent, this.patternToGetQuery)
+        return m.findAll() as List
+    }
+
     SqlMan replace(SqlSetup localOpt){
         connectedOpt = mergeOption(localOpt)
         // analysis
-        Matcher m = getMatchedList(this.sqlContent, this.patternToGetQuery)
-        analysisResultList = getAnalysisResultList(m)
+        analysisResultList = getAnalyzedObjectList(getMatchedQueryList(), connectedOpt)
         return this
     }
 
@@ -206,16 +215,20 @@ class SqlMan extends SqlAnalMan{
             logger.debug '- Check OBJECT...'
             Util.eachWithTimeProgressBar(analysisResultList, 20, connectedOpt.modeSqlProgressBar){
                 SqlObject obj = it.item
-                int count = it.count
-                obj.isExistOnDB = isExistOnSchemeOnDB(obj, existObjectList)
-                if (obj.isExistOnDB) {
-                    //Already exist object!
-                    if (containsIgnoreCase(localOpt.commnadListThatObjectMustNotExist, obj.commandType))
-                        obj.warnningMessage = WARN_MSG_2
-                } else {
-                    //Does not exist!
-                    if (containsIgnoreCase(localOpt.commnadListThatObjectMustExist, obj.commandType))
-                        obj.warnningMessage = WARN_MSG_1
+                //PLSQL and DELETE are ignore BeforeCheck
+                //Others do BeforeCheck
+                if (!['PLSQL', 'DELETE'].contains(obj.commandType)){
+                    int count = it.count
+                    obj.isExistOnDB = isExistOnSchemeOnDB(obj, existObjectList)
+                    if (obj.isExistOnDB) {
+                        //Already exist object!
+                        if (containsIgnoreCase(localOpt.commnadListThatObjectMustNotExist, obj.commandType))
+                            obj.warnningMessage = WARN_MSG_2
+                    } else {
+                        //Does not exist!
+                        if (containsIgnoreCase(localOpt.commnadListThatObjectMustExist, obj.commandType))
+                            obj.warnningMessage = WARN_MSG_1
+                    }
                 }
             }
             // - Check Exist TableSpace
@@ -278,13 +291,27 @@ class SqlMan extends SqlAnalMan{
 
 
 
-    List<SqlObject> getAnalysisResultList(Matcher m){
+    List<SqlObject> getAnalyzedObjectList(List m, SqlSetup opt){
         def resultList = []
         logger.debug "- Replace Object Name..."
-        Util.eachWithTimeProgressBar( (m.findAll() as List), 20, connectedOpt.modeSqlProgressBar) { data ->
+        Util.eachWithTimeProgressBar(m, 20, opt.modeSqlProgressBar) { data ->
             String query = data.item
             int count = data.count
-            resultList << getReplacedObject(getAnalysisObject(query), connectedOpt, count)
+            SqlObject sqlObj = getAnalyzedObject(query)
+            sqlObj.sqlFileName = sqlFileName
+            sqlObj.seq = count
+            if (sqlObj.commandType == 'PLSQL'){
+                String plsqlQuery = sqlObj.query
+                SqlMan plsqlman = this.class.newInstance().init().query(plsqlQuery).command([SqlMan.ALL_WITHOUT_PLSQL, SqlMan.SELECT])
+                List<String> matchedQueryList = plsqlman.getMatchedQueryList()
+                List<SqlObject> InPlsqlReplacedQueryList = plsqlman.replace(opt.clone().put([modeSqlProgressBar:false])).getAnalysisResultList()
+                InPlsqlReplacedQueryList.eachWithIndex{ SqlObject plsqlobj, int i ->
+                    sqlObj.query = sqlObj.query.replace(matchedQueryList[i], plsqlobj.query)
+                }
+            }else{
+                sqlObj = getReplacedObject(sqlObj, opt, count)
+            }
+            resultList << sqlObj
         }
         return resultList
     }
@@ -293,12 +320,12 @@ class SqlMan extends SqlAnalMan{
     void runSql(SqlSetup localOpt, List<SqlObject> analysisResultList){
         connect(localOpt)
         sql.withTransaction{
-            logger.debug "Executing Sqls..."
+            logger.debug "- Executing Sqls..."
             Util.eachWithTimeProgressBar(analysisResultList, 20, connectedOpt.modeSqlProgressBar){ data ->
                 SqlObject sqlObj = data.item
                 int count = data.count
                 try{
-                    String query = removeLastSemicoln(removeLastSlash(sqlObj.query))
+                    String query = removeLastSlash(removeLastSemicoln(sqlObj.query))
                     //- CREATE JAVA
                     if (sqlObj.objectType == 'JAVA'){
                         query = """
@@ -472,6 +499,8 @@ class SqlMan extends SqlAnalMan{
         def grantList = resultList.findAll{ it.commandType.equalsIgnoreCase('GRANT') }
         def insertList = resultList.findAll{ it.commandType.equalsIgnoreCase('INSERT') }
         def updateList = resultList.findAll{ it.commandType.equalsIgnoreCase('UPDATE') }
+        def plsqlList = resultList.findAll{ it.commandType.equalsIgnoreCase('PLSQL') }
+        def deleteList = resultList.findAll{ it.commandType.equalsIgnoreCase('DELETE') }
         def summary = [
                 'create table':[
                         all: createTableList.size(),
@@ -539,6 +568,16 @@ class SqlMan extends SqlAnalMan{
                         all: updateList.size(),
                         o: updateList.findAll{ it.isOk }.size(),
                         x: updateList.findAll{ !it.isOk }.size()
+                ],
+                plsql:[
+                        all: plsqlList.size(),
+                        o: plsqlList.findAll{ it.isOk }.size(),
+                        x: plsqlList.findAll{ !it.isOk }.size()
+                ],
+                delete:[
+                        all: deleteList.size(),
+                        o: deleteList.findAll{ it.isOk }.size(),
+                        x: deleteList.findAll{ !it.isOk }.size()
                 ]
         ]
         return summary
