@@ -105,8 +105,9 @@ class SqlMan extends SqlAnalMan{
 
     SqlMan set(SqlSetup opt){
         gOpt.merge(opt)
-        gOpt.url         = (opt.url) ? opt.url : getUrl(opt.vendor, opt.ip, opt.port, opt.db)
-        gOpt.driver      = (opt.driver) ? opt.driver : getDriver(opt.vendor)
+//        gOpt.url         = (opt.url) ? opt.url : getUrl(opt.vendor, opt.ip, opt.port, opt.db)
+//        gOpt.driver      = (opt.driver) ? opt.driver : getDriver(opt.vendor)
+        gOpt.setup()
         return this
     }
 
@@ -119,9 +120,10 @@ class SqlMan extends SqlAnalMan{
 
     SqlMan connect(SqlSetup localOpt){
         SqlSetup opt = mergeOption(localOpt)
-        opt.url    = (opt.url) ? opt.url : getUrl(localOpt.vendor, localOpt.ip, localOpt.port, localOpt.db)
-        opt.driver = (opt.driver) ? opt.driver : getDriver(localOpt.vendor)
-        this.sql = Sql.newInstance(opt.url, opt.user, opt.password, opt.driver)
+//        opt.url    = (opt.url) ? opt.url : getUrl(localOpt.vendor, localOpt.ip, localOpt.port, localOpt.db)
+//        opt.driver = (opt.driver) ? opt.driver : getDriver(localOpt.vendor)
+//        this.sql = Sql.newInstance(opt.url, opt.user, opt.password, opt.driver)
+        this.sql = opt.setup().generateSqlInstance()
         connectedOpt = opt
         return this
     }
@@ -139,7 +141,8 @@ class SqlMan extends SqlAnalMan{
 
 
     SqlMan close(){
-        if (sql) sql.close()
+        if (sql)
+            sql.close()
         return this
     }
 
@@ -448,37 +451,6 @@ class SqlMan extends SqlAnalMan{
         }
 
         return resultReportLineList
-    }
-
-
-
-
-
-
-    String getUrl(String vendor, String ip, String port, String db){
-        String url
-        switch (vendor.toUpperCase()) {
-            case SqlMan.ORACLE:
-                url = "jdbc:oracle:thin:@${ip}:${port}:${db}"
-                break
-            default:
-                url = "jdbc:oracle:thin:@${ip}:${port}:${db}"
-                break
-        }
-        return url
-    }
-
-    String getDriver(String vendor){
-        String driver
-        switch (vendor.toUpperCase()) {
-            case SqlMan.ORACLE:
-                driver = "oracle.jdbc.driver.OracleDriver"
-                break
-            default:
-                driver = "oracle.jdbc.driver.OracleDriver"
-                break
-        }
-        return driver
     }
 
 
