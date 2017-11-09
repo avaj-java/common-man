@@ -488,21 +488,30 @@ class PropMan {
      *
      *************************/
     def find(def object, def condition){
+        return find(object, condition, null)
+    }
+
+    def find(def object, def condition, Closure closure){
         if (object instanceof Map){
-            def matchedObj = getMatchedObject(object, condition)
+            def matchedObj = getMatchedObject(object, condition, closure)
             return matchedObj
         }else if (object instanceof List){
             List results = []
             object.each{
-                def matchedObj = getMatchedObject(it, condition)
+                def matchedObj = getMatchedObject(it, condition, closure)
                 if (matchedObj)
                     results << matchedObj
             }
             return results
         }
+        return [:]
     }
 
     def getMatchedObject(def object, def condition){
+        return getMatchedObject(object, condition, null)
+    }
+
+    def getMatchedObject(def object, def condition, Closure closure){
         if (condition instanceof String){
             condition = [id:condition]
         }
@@ -514,23 +523,47 @@ class PropMan {
             return null //No Matching
         }
         if (condition instanceof Map){
-            for (String key : (condition as Map).keySet()){
-                def attributeValue = object[key]
-                def conditionValue = condition[key]
-                if (attributeValue){
-                    if (conditionValue instanceof List && conditionValue.contains(attributeValue)){
-                    }else if (attributeValue == conditionValue){
-                    }else{
-                        return //nothing
-                    }
-                }else{
-                    if (attributeValue == conditionValue){
-                    }else{
-                        return //No Matching
+            if (closure){
+                return closure(object, condition)
+            }else{
+                for (String key : (condition as Map).keySet()) {
+                    def attributeValue = object[key]
+                    def conditionValue = condition[key]
+                    if (attributeValue) {
+                        /**{"attribute":["value1","value2"]} **/
+                        if (attributeValue instanceof List) {
+                            //{"conditionAttribute":["value1","value2"]}
+                            if (conditionValue instanceof List) {
+                                if (!attributeValue.findAll { (conditionValue as List).contains(it) })
+                                    return //No Matching
+
+                                //{"conditionAttribute": ... }
+                            } else {
+                                if (!attributeValue.findAll { it == conditionValue })
+                                    return //No Matching
+                            }
+
+                            /**{"attribute": ... } **/
+                        } else {
+                            //{"conditionAttribute":["value1","value2"]}
+                            if (conditionValue instanceof List) {
+                                if (!conditionValue.contains(attributeValue))
+                                    return //No Matching
+
+                                //{"conditionAttribute": ... }
+                            } else {
+                                if (attributeValue != conditionValue)
+                                    return //No Matching
+                            }
+                        }
+
+                    } else {
+                        if (attributeValue != conditionValue)
+                            return //No Matching
                     }
                 }
+                return object
             }
-            return object
         }
         if (condition == null)
             return object
