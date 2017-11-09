@@ -437,8 +437,10 @@ class VariableMan {
      */
     boolean validateCodeRule(String codeRule) throws Exception{
         /* DEVELOPER COMMENT: "It does not matter." */
-        if (!codeRule || !codeRule.trim())
-            throw new Exception( ErrorMessage.VAR1.msg + "[${codeRule}]" )
+        if (codeRule == null)
+            throw new NullPointerException()
+//        if (!codeRule || !codeRule.trim())
+//            throw new Exception( ErrorMessage.VAR1.msg + "[${codeRule}]" )
         if (Pattern.compile('[{]').matcher(codeRule).size() != Pattern.compile('[}]').matcher(codeRule).size())
             throw new Exception( ErrorMessage.VAR6.msg + "[${codeRule}]" )
         return true

@@ -21,6 +21,8 @@ class VariableManTest {
 
         //VariableMan 생성
         VariableMan varman = new VariableMan('EUC-KR', [
+                noContent                     : "",
+                nullContent                     : null,
                 USERNAME                     : "하이하이하이",
                 lowerChar                    : "hi everybody",
                 upperChar                    : "HI EVERYBODY",
@@ -32,6 +34,9 @@ class VariableManTest {
 
         ])
 //        .setModeDebug(true)
+
+        // Test empty string
+        assert varman.parse('') == ""
 
         // Test - left() and right()
         assert varman.parse('${USERNAME(8).left()}asfd') == "하이하이asfd"
