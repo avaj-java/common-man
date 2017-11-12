@@ -26,6 +26,8 @@ class SqlMan extends SqlAnalMan{
     List<SqlObject> analysisResultList = []
     Map resultReportMap
 
+    Boolean modeInnerQueriesAnalysis
+
 
     public static final String ORACLE = "ORACLE"
     public static final String TIBERO = "TIBERO"
@@ -304,7 +306,8 @@ class SqlMan extends SqlAnalMan{
      *************************/
     List<SqlObject> getAnalyzedObjectList(List m, SqlSetup opt){
         def resultList = []
-        logger.info "- Replace Object Name..."
+        if (!modeInnerQueriesAnalysis)
+            logger.info "- Replace Object Name..."
         Util.eachWithTimeProgressBar(m, 20, opt.modeSqlProgressBar) { data ->
             String query = data.item
             int count = data.count
@@ -314,6 +317,7 @@ class SqlMan extends SqlAnalMan{
             if (sqlObj.commandType == 'PLSQL'){
                 String plsqlQuery = sqlObj.query
                 SqlMan plsqlman = this.class.newInstance().init().query(plsqlQuery).command([SqlMan.ALL_WITHOUT_PLSQL, SqlMan.SELECT])
+                plsqlman.modeInnerQueriesAnalysis = true
                 List<String> matchedQueryList = plsqlman.getMatchedQueryList()
                 List<SqlObject> InPlsqlReplacedQueryList = plsqlman.replace(opt.clone().put([modeSqlProgressBar:false])).getAnalysisResultList()
                 InPlsqlReplacedQueryList.eachWithIndex{ SqlObject plsqlobj, int i ->
