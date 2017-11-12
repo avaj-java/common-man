@@ -613,6 +613,13 @@ class SqlAnalMan {
         List<String> words = obj.arrayToCompare
         obj.objectType = 'TABLE'
         words.eachWithIndex{ String word, int idx ->
+            if (idx == 2){
+                if (word == 'FROM')
+                    obj.objectNameIdx = idx +1
+                else
+                    obj.objectNameIdx = idx
+                obj.objectName = words[obj.objectNameIdx]
+            }
             if (word.equalsIgnoreCase("FROM") || word.equalsIgnoreCase("JOIN")){
                 int i = idx
                 int stepi = 0
@@ -867,6 +874,7 @@ class SqlAnalMan {
                 if (obj.objectType.equalsIgnoreCase("SEQUENCE"))
                     obj.objectName = obj.sequenceName
             }
+            analObjectName(obj)
         }
         obj.query = words.join(" ")
         return obj

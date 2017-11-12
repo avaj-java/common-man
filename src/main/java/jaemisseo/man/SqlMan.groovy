@@ -205,18 +205,20 @@ class SqlMan extends SqlAnalMan{
             def existUserList
             connect(localOpt)
 
-            //Collecting
-            logger.debug '- Collecting OBJECT from DB...'
+            /**
+             * Collecting Information
+             **/
+            logger.info '- Collecting OBJECT from DB...'
             Map data = Util.startPrinter(3, 20, localOpt.modeSqlProgressBar)
-            // - OBJECT
+            // - Collecting OBJECT
             existObjectList = sql.rows("SELECT OBJECT_NAME, OBJECT_TYPE, OWNER AS SCHEME FROM ALL_OBJECTS")
-            // - TABLESPACE
+            // - Collecting TABLESPACE
             def resultsForTablespace = analysisResultList.findAll{ it.commandType.equalsIgnoreCase("CREATE") && it.objectType.equalsIgnoreCase("TABLESPACE") }
             if (resultsForTablespace){
                 data.stringList << '- Collecting TABLESPACE from DB...'
                 existTablespaceList = sql.rows("SELECT TABLESPACE_NAME AS OBJECT_NAME, 'TABLESPACE' AS OBJECT_TYPE FROM USER_TABLESPACES")
             }
-            // - USER
+            // - Collecting USER
             def resultsForUser = analysisResultList.findAll{ it.commandType.equalsIgnoreCase("CREATE") && it.objectType.equalsIgnoreCase("USER") }
             if (resultsForUser){
                 data.stringList << '- Collecting USER from DB...'
@@ -224,12 +226,14 @@ class SqlMan extends SqlAnalMan{
             }
             Util.endWorker(data)
 
-            //Checking
+            /**
+             * Checking
+             **/
             // - Check Exist Object
-            logger.debug '- Check OBJECT...'
+            logger.info '- Check OBJECT...'
             Util.eachWithTimeProgressBar(analysisResultList, 20, connectedOpt.modeSqlProgressBar){
                 SqlObject obj = it.item
-                //PLSQL and DELETE are ignore BeforeCheck
+                //PLSQL and DELETE and DROP are ignored from BeforeCheck
                 //Others do BeforeCheck
                 if (!['PLSQL', 'DELETE', 'DROP'].contains(obj.commandType)){
                     int count = it.count
@@ -247,23 +251,25 @@ class SqlMan extends SqlAnalMan{
             }
             // - Check Exist TableSpace
             if (resultsForTablespace){
-                logger.debug '- Check TABLESPACE...'
-                resultsForTablespace.each { SqlObject obj ->
+                logger.info '- Check TABLESPACE...'
+                Util.eachWithTimeProgressBar(resultsForTablespace, 20, connectedOpt.modeSqlProgressBar){
+                    SqlObject obj = it.item
                     obj.isExistOnDB = isExistOnDB(obj, existTablespaceList)
                     if (obj.isExistOnDB)
                         obj.warnningMessage = WARN_MSG_2
                 }
-                logger.debug ' DONE'
+//                logger.info ' DONE'
             }
             // - Check Exist User
             if (resultsForUser){
-                logger.debug '- Check USER...'
-                resultsForUser.each { SqlObject obj ->
+                logger.info '- Check USER...'
+                Util.eachWithTimeProgressBar(resultsForUser, 20, connectedOpt.modeSqlProgressBar){
+                    SqlObject obj = it.item
                     obj.isExistOnDB = isExistOnDB(obj, existUserList)
                     if (obj.isExistOnDB)
                         obj.warnningMessage = WARN_MSG_2
                 }
-                logger.debug ' DONE'
+//                logger.info ' DONE'
             }
 
         }catch(Exception e){
@@ -289,25 +295,16 @@ class SqlMan extends SqlAnalMan{
 
 
 
-    SqlMan run() {
-        return run(new SqlSetup())
-    }
-    SqlMan run(SqlSetup localOpt) {
-        // SQL
-        runSql(localOpt, analysisResultList)
-
-        // create report
-        createReport(analysisResultList)
-        return this
-    }
 
 
-
-
-
+    /*************************
+     *
+     * REPLACE Some Names
+     *
+     *************************/
     List<SqlObject> getAnalyzedObjectList(List m, SqlSetup opt){
         def resultList = []
-        logger.debug "- Replace Object Name..."
+        logger.info "- Replace Object Name..."
         Util.eachWithTimeProgressBar(m, 20, opt.modeSqlProgressBar) { data ->
             String query = data.item
             int count = data.count
@@ -331,10 +328,28 @@ class SqlMan extends SqlAnalMan{
     }
 
 
+    /*************************
+     *
+     * RUN SQL
+     *
+     *************************/
+    SqlMan run() {
+        return run(new SqlSetup())
+    }
+
+    SqlMan run(SqlSetup localOpt) {
+        // SQL
+        runSql(localOpt, analysisResultList)
+
+        // create report
+        createReport(analysisResultList)
+        return this
+    }
+
     void runSql(SqlSetup localOpt, List<SqlObject> analysisResultList){
         connect(localOpt)
         sql.withTransaction{
-            logger.debug "- Executing Sqls..."
+            logger.info "- Executing Sqls..."
             Util.eachWithTimeProgressBar(analysisResultList, 20, connectedOpt.modeSqlProgressBar){ data ->
                 SqlObject sqlObj = data.item
                 int count = data.count
@@ -372,6 +387,12 @@ class SqlMan extends SqlAnalMan{
 
 
 
+
+    /*************************
+     *
+     * REPORT
+     *
+     *************************/
     void createReport(List<SqlObject> results){
         //Option
         List optionList = []
@@ -393,9 +414,9 @@ class SqlMan extends SqlAnalMan{
 
 
 
-    /**
+    /*************************
      * Report 'Before Check' With Console
-     */
+     *************************/
     SqlMan reportAnalysis(){
         List<String> warningList = getWarningList()
         warningList.each{
@@ -416,9 +437,9 @@ class SqlMan extends SqlAnalMan{
         return this
     }
 
-    /**
+    /*************************
      * Report 'SQL Result' With Console
-     */
+     *************************/
     SqlMan reportResult(){
         List<String> reportLineList = generateResultReportSummaryLineList()
         if (reportLineList){
@@ -437,7 +458,7 @@ class SqlMan extends SqlAnalMan{
         if (resultReportMap) {
             resultReportLineList << ""
             resultReportLineList << ""
-            resultReportLineList << "<REPORT>"
+            resultReportLineList << "<REPORT: ${sqlFileName?:''}>"
             Map mainReportMap = resultReportMap.findAll { it.key != 'summary' }
             Map summaryReportMap = resultReportMap.summary
             if (mainReportMap) {
