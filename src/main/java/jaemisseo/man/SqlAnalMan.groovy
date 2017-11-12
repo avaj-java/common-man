@@ -130,6 +130,9 @@ class SqlAnalMan {
             case 'DELETE':
                 sqlObj = analDelete(sqlObj)
                 break
+            case 'DROP':
+                sqlObj = analDrop(sqlObj)
+                break
             default:
                 break
         }
@@ -146,14 +149,22 @@ class SqlAnalMan {
             objectType = 'VIEW'
         }else if (getMatchedList(query, getSqlPattern(SqlMan.CREATE_SEQUENCE)).size()){
             objectType = 'SEQUENCE'
-        }else if (getMatchedList(query, getSqlPattern(SqlMan.CREATE_FUNCTION)).size()){
-            objectType = 'FUNCTION'
-        }else if (getMatchedList(query, getSqlPattern(SqlMan.CREATE_JAVA)).size()){
-            objectType = 'JAVA'
         }else if (getMatchedList(query, getSqlPattern(SqlMan.CREATE_TABLESPACE)).size()){
             objectType = 'TABLESPACE'
         }else if (getMatchedList(query, getSqlPattern(SqlMan.CREATE_USER)).size()){
             objectType = 'USER'
+        }else if (getMatchedList(query, getSqlPattern(SqlMan.CREATE_PACKAGE)).size()){
+            objectType = 'PACKAGE'
+        }else if (getMatchedList(query, getSqlPattern(SqlMan.CREATE_PROCEDURE)).size()){
+            objectType = 'PROCEDURE'
+        }else if (getMatchedList(query, getSqlPattern(SqlMan.CREATE_FUNCTION)).size()){
+            objectType = 'FUNCTION'
+        }else if (getMatchedList(query, getSqlPattern(SqlMan.CREATE_TRIGGER)).size()){
+            objectType = 'TRIGGER'
+        }else if (getMatchedList(query, getSqlPattern(SqlMan.CREATE_JAVA)).size()){
+            objectType = 'JAVA'
+        }else if (getMatchedList(query, getSqlPattern([SqlMan.CREATE_ETC, SqlMan.CREATE_ETC2])).size()){
+            objectType = 'ETC'
         }
         return objectType
     }
@@ -176,43 +187,59 @@ class SqlAnalMan {
     String getSqlPattern(int target){
         getSqlPattern([target])
     }
-    String getSqlPattern(def targetList){
+    String getSqlPattern(List targetList){
         String pattern = ''
         targetList.each{
             switch (it){
                 case SqlMan.ALL:
-                    pattern = getSqlPattern([SqlMan.CREATE, SqlMan.INSERT, SqlMan.UPDATE, SqlMan.ALTER, SqlMan.COMMENT, SqlMan.GRANT, SqlMan.DELETE, SqlMan.PLSQL])
+                    pattern = getSqlPattern([SqlMan.CREATE, SqlMan.INSERT, SqlMan.UPDATE, SqlMan.ALTER, SqlMan.COMMENT, SqlMan.GRANT, SqlMan.DELETE, SqlMan.DROP, SqlMan.PLSQL])
                     break
                 case SqlMan.ALL_WITHOUT_PLSQL:
-                    pattern = getSqlPattern([SqlMan.CREATE, SqlMan.INSERT, SqlMan.UPDATE, SqlMan.ALTER, SqlMan.COMMENT, SqlMan.GRANT, SqlMan.DELETE])
+                    pattern = getSqlPattern([SqlMan.CREATE, SqlMan.INSERT, SqlMan.UPDATE, SqlMan.ALTER, SqlMan.COMMENT, SqlMan.GRANT, SqlMan.DELETE, SqlMan.DROP])
                     break
                 case SqlMan.CREATE:
-                    pattern = getSqlPattern([SqlMan.CREATE_TABLE, SqlMan.CREATE_INDEX, SqlMan.CREATE_VIEW, SqlMan.CREATE_SEQUENCE, SqlMan.CREATE_FUNCTION, SqlMan.CREATE_JAVA, SqlMan.CREATE_TABLESPACE, SqlMan.CREATE_USER])
+                    pattern = getSqlPattern([SqlMan.CREATE_TABLE, SqlMan.CREATE_INDEX, SqlMan.CREATE_VIEW, SqlMan.CREATE_TABLESPACE, SqlMan.CREATE_USER, SqlMan.CREATE_SEQUENCE, SqlMan.CREATE_PROCEDURE, SqlMan.CREATE_PACKAGE, SqlMan.CREATE_FUNCTION, SqlMan.CREATE_TRIGGER, SqlMan.CREATE_JAVA, SqlMan.CREATE_ETC, SqlMan.CREATE_ETC2])
                     break
                 case SqlMan.CREATE_TABLE:
-                    pattern = addOR(pattern, "CREATE\\s+[^;]{0,40}TABLE\\s+(?:[^;']|(?:'[^']*'))+[;]{1}")
+                    pattern = addOR(pattern, "CREATE[^;]{0,40}\\s+TABLE\\s+(?:[^;']|(?:'[^']*'))+[;]{1}")
                     break
                 case SqlMan.CREATE_INDEX:
-                    pattern = addOR(pattern, "CREATE\\s+[^;]{0,40}INDEX\\s+(?:[^;']|(?:'[^']*'))+[;]{1}")
+                    pattern = addOR(pattern, "CREATE[^;]{0,40}\\s+INDEX\\s+(?:[^;']|(?:'[^']*'))+[;]{1}")
                     break
                 case SqlMan.CREATE_VIEW:
-                    pattern = addOR(pattern, "CREATE\\s+[^;]{0,40}VIEW\\s+(?:[^;']|(?:'[^']*'))+[;]{1}")
+                    pattern = addOR(pattern, "CREATE[^;]{0,40}\\s+VIEW\\s+(?:[^;']|(?:'[^']*'))+[;]{1}")
                     break
                 case SqlMan.CREATE_SEQUENCE:
-                    pattern = addOR(pattern, "CREATE\\s+[^;]{0,40}SEQUENCE\\s+(?:[^;']|(?:'[^']*'))+[;]{1}")
-                    break
-                case SqlMan.CREATE_FUNCTION:
-                    pattern = addOR(pattern, "CREATE\\s+[^/]{0,40}\\s+FUNCTION\\s+(?:[^/']|(?:'[^']*'))+RETURN(?:[^/'\"]|(?:'[^']*')|(?:\"[^\"]*\"))+[/]{1}")
-                    break
-                case SqlMan.CREATE_JAVA:
-                    pattern = addOR(pattern, "CREATE\\s+[^/]{0,40}\\s+JAVA\\s+(?:SOURCE|RESOURCE|CLASS)(?:[^/\"]|(?:\"[^\"]*\"))+[/]{1}")
+                    pattern = addOR(pattern, "CREATE[^;]{0,40}\\s+SEQUENCE\\s+(?:[^;']|(?:'[^']*'))+[;]{1}")
                     break
                 case SqlMan.CREATE_TABLESPACE:
-                    pattern = addOR(pattern, "CREATE\\s+[^;]{0,40}TABLESPACE\\s+(?:[^;']|(?:'[^']*'))+[;]{1}")
+                    pattern = addOR(pattern, "CREATE[^;]{0,40}\\s+TABLESPACE\\s+(?:[^;']|(?:'[^']*'))+[;]{1}")
                     break
                 case SqlMan.CREATE_USER:
-                    pattern = addOR(pattern, "CREATE\\s+[^;]{0,40}USER\\s+(?:[^;'\"]|(?:'[^']*')|(?:\"[^\"]*\"))+[;]{1}")
+                    pattern = addOR(pattern, "CREATE[^;]{0,40}\\s+USER\\s+(?:[^;'\"]|(?:'[^']*')|(?:\"[^\"]*\"))+[;]{1}")
                     break
+                case SqlMan.CREATE_PACKAGE:
+                    pattern = addOR(pattern, "CREATE[^/]{0,40}\\s+PACKAGE\\s+(?:[^/']|(?:'[^']*'))+[/]{1}")
+                    break
+                case SqlMan.CREATE_PROCEDURE:
+                    pattern = addOR(pattern, "CREATE[^/]{0,40}\\s+PROCEDURE\\s+(?:[^/']|(?:'[^']*'))+[/]{1}")
+                    break
+                case SqlMan.CREATE_FUNCTION:
+                    pattern = addOR(pattern, "CREATE[^/]{0,40}\\s+FUNCTION\\s+(?:[^/']|(?:'[^']*'))+RETURN(?:[^/'\"]|(?:'[^']*')|(?:\"[^\"]*\"))+[/]{1}")
+                    break
+                case SqlMan.CREATE_TRIGGER:
+                    pattern = addOR(pattern, "CREATE[^/]{0,40}\\s+TRIGGER\\s+(?:[^/']|(?:'[^']*'))+[/]{1}")
+                    break
+                case SqlMan.CREATE_JAVA:
+                    pattern = addOR(pattern, "CREATE[^/]{0,40}\\s+JAVA\\s+(?:SOURCE|RESOURCE|CLASS)(?:[^/\"]|(?:\"[^\"]*\"))+[/]{1}")
+                    break
+                case SqlMan.CREATE_ETC:
+                    pattern = addOR(pattern, "CREATE[^/]{0,40}\\s+(?:FUNCTION|TRIGGER|PACKAGE|PROCEDURE|JAVA|LIBRARY|TYPE)\\s+(?:[^/']|(?:'[^']*'))+[/]{1}")
+                    break
+                case SqlMan.CREATE_ETC2:
+                    pattern = addOR(pattern, "CREATE\\s+(?:[^;']|(?:'[^']*'))+[;]{1}")
+                    break
+
                 case SqlMan.INSERT:
                     pattern = addOR(pattern, "INSERT\\s+[^;]{0,40}\\s+(?:[^;']|(?:'[^']*'))+[;]{1}")
                     break
@@ -237,6 +264,9 @@ class SqlAnalMan {
                 case SqlMan.DELETE:
                     pattern = addOR(pattern, "DELETE\\s+(?:[^;']|(?:'[^']*'))+[;]{1}")
                     break
+                case SqlMan.DROP:
+                    pattern = addOR(pattern, "DROP\\s+(?:[^;']|(?:'[^']*'))+[;]{1}")
+                    break
                 default:
                     break
             }
@@ -256,7 +286,15 @@ class SqlAnalMan {
             word = word.toUpperCase()
             if (!obj.objectTypeIdx && word.equalsIgnoreCase(objectType)){
                 obj.objectTypeIdx = idx
-                obj.objectNameIdx = obj.objectTypeIdx + 1
+                if (objectType.equalsIgnoreCase("PACKAGE") && words[idx+1].equalsIgnoreCase("BODY")) {
+                    objectType = "PACKAGE BODY"
+                    obj.objectNameIdx = obj.objectTypeIdx + 2
+                }else if (objectType.equalsIgnoreCase("TYPE") && words[idx+1].equalsIgnoreCase("BODY")){
+                    objectType = "TYPE BODY"
+                    obj.objectNameIdx = obj.objectTypeIdx + 2
+                }else {
+                    obj.objectNameIdx = obj.objectTypeIdx + 1
+                }
 
             }else if (word.equalsIgnoreCase("TABLESPACE")){
                 if (words[idx -1].equalsIgnoreCase("TEMPORARY"))
@@ -601,6 +639,28 @@ class SqlAnalMan {
                         }else if (stepi > 1 && searchWord.toUpperCase() in ["WHERE", "ORDER", "GROUP"])
                             break
                     }
+                }
+            }
+        }
+        return analObjectName(obj)
+    }
+
+    /*************************
+     *  DROP
+     *************************/
+    SqlObject analDrop(SqlObject obj){
+        List<String> words = obj.arrayToCompare
+        words.eachWithIndex{ String word, int idx ->
+            if (idx == 2){
+                obj.objectTypeIdx = idx
+                obj.objectType = word.toUpperCase()
+            }else if (idx == 3){
+                if (obj.objectType.equalsIgnoreCase("PACKAGE") && word.equalsIgnoreCase("BODY")) {
+                    obj.objectNameIdx = idx + 1
+                }else if (obj.objectType.equalsIgnoreCase("TYPE") && word.equalsIgnoreCase("BODY")){
+                    obj.objectNameIdx = idx + 1
+                }else{
+                    obj.objectNameIdx = idx
                 }
             }
         }

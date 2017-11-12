@@ -32,15 +32,24 @@ class SqlMan extends SqlAnalMan{
 
     public static final int ALL = 0
     public static final int ALL_WITHOUT_PLSQL = 1
-    public static final int CREATE = 10
-    public static final int CREATE_TABLE = 11
-    public static final int CREATE_INDEX = 12
-    public static final int CREATE_VIEW = 13
-    public static final int CREATE_SEQUENCE = 14
-    public static final int CREATE_FUNCTION = 15
-    public static final int CREATE_TABLESPACE = 16
-    public static final int CREATE_USER = 17
-    public static final int CREATE_JAVA = 18
+
+    public static final int CREATE = 1000
+    public static final int CREATE_TABLE = 1001
+    public static final int CREATE_INDEX = 1002
+    public static final int CREATE_VIEW = 1003
+    public static final int CREATE_SEQUENCE = 1004
+    public static final int CREATE_TABLESPACE = 1005
+    public static final int CREATE_USER = 1006
+
+    public static final int CREATE_PACKAGE = 1007
+    public static final int CREATE_PROCEDURE = 1008
+    public static final int CREATE_FUNCTION = 1009
+    public static final int CREATE_TRIGGER = 1010
+    public static final int CREATE_JAVA = 1011
+
+    public static final int CREATE_ETC = 1090
+    public static final int CREATE_ETC2 = 1091
+
     public static final int ALTER = 20
     public static final int ALTER_TABLE = 21
     public static final int ALTER_USER = 22
@@ -51,6 +60,8 @@ class SqlMan extends SqlAnalMan{
     public static final int PLSQL = 70
     public static final int SELECT = 80
     public static final int DELETE = 90
+    public static final int DROP = 100
+
 
 
     public static final int IGNORE_CHECK = 1
@@ -220,7 +231,7 @@ class SqlMan extends SqlAnalMan{
                 SqlObject obj = it.item
                 //PLSQL and DELETE are ignore BeforeCheck
                 //Others do BeforeCheck
-                if (!['PLSQL', 'DELETE'].contains(obj.commandType)){
+                if (!['PLSQL', 'DELETE', 'DROP'].contains(obj.commandType)){
                     int count = it.count
                     obj.isExistOnDB = isExistOnSchemeOnDB(obj, existObjectList)
                     if (obj.isExistOnDB) {
@@ -462,10 +473,14 @@ class SqlMan extends SqlAnalMan{
         def createIndexList = resultList.findAll{ it.commandType.equalsIgnoreCase('CREATE') && it.objectType.equalsIgnoreCase("INDEX") }
         def createViewList = resultList.findAll{ it.commandType.equalsIgnoreCase('CREATE') && it.objectType.equalsIgnoreCase("VIEW") }
         def createSequenceList = resultList.findAll{ it.commandType.equalsIgnoreCase('CREATE') && it.objectType.equalsIgnoreCase("SEQUENCE") }
-        def createFunctionList = resultList.findAll{ it.commandType.equalsIgnoreCase('CREATE') && it.objectType.equalsIgnoreCase("FUNCTION") }
         def createTablespaceList = resultList.findAll{ it.commandType.equalsIgnoreCase('CREATE') && it.objectType.equalsIgnoreCase("TABLESPACE") }
         def createUserList = resultList.findAll{ it.commandType.equalsIgnoreCase('CREATE') && it.objectType.equalsIgnoreCase("USER") }
+        def createPackageList = resultList.findAll{ it.commandType.equalsIgnoreCase('CREATE') && it.objectType.equalsIgnoreCase("PACKAGE") }
+        def createPocedureList = resultList.findAll{ it.commandType.equalsIgnoreCase('CREATE') && it.objectType.equalsIgnoreCase("PROCEDURE") }
+        def createTriggerList = resultList.findAll{ it.commandType.equalsIgnoreCase('CREATE') && it.objectType.equalsIgnoreCase("TRIGGER") }
+        def createFunctionList = resultList.findAll{ it.commandType.equalsIgnoreCase('CREATE') && it.objectType.equalsIgnoreCase("FUNCTION") }
         def createJavaList = resultList.findAll{ it.commandType.equalsIgnoreCase('CREATE') && it.objectType.equalsIgnoreCase("JAVA") }
+        def createEtcList = resultList.findAll{ it.commandType.equalsIgnoreCase('CREATE') && it.objectType.equalsIgnoreCase("ETC") }
         def alterList = resultList.findAll{ it.commandType.equalsIgnoreCase('ALTER') }
         def commentList = resultList.findAll{ it.commandType.equalsIgnoreCase('COMMENT') }
         def grantList = resultList.findAll{ it.commandType.equalsIgnoreCase('GRANT') }
@@ -473,6 +488,7 @@ class SqlMan extends SqlAnalMan{
         def updateList = resultList.findAll{ it.commandType.equalsIgnoreCase('UPDATE') }
         def plsqlList = resultList.findAll{ it.commandType.equalsIgnoreCase('PLSQL') }
         def deleteList = resultList.findAll{ it.commandType.equalsIgnoreCase('DELETE') }
+        def dropList = resultList.findAll{ it.commandType.equalsIgnoreCase('DROP') }
         def summary = [
                 'create table':[
                         all: createTableList.size(),
@@ -496,11 +512,6 @@ class SqlMan extends SqlAnalMan{
                         o: createSequenceList.findAll{ it.isOk }.size(),
                         x: createSequenceList.findAll{ !it.isOk }.size()
                 ],
-                'create function':[
-                        all: createFunctionList.size(),
-                        o: createFunctionList.findAll{ it.isOk }.size(),
-                        x: createFunctionList.findAll{ !it.isOk }.size()
-                ],
                 'create tablespace':[
                         all: createTablespaceList.size(),
                         o: createTablespaceList.findAll{ it.isOk }.size(),
@@ -511,10 +522,35 @@ class SqlMan extends SqlAnalMan{
                         o: createUserList.findAll{ it.isOk }.size(),
                         x: createUserList.findAll{ !it.isOk }.size()
                 ],
+                'create function':[
+                        all: createFunctionList.size(),
+                        o: createFunctionList.findAll{ it.isOk }.size(),
+                        x: createFunctionList.findAll{ !it.isOk }.size()
+                ],
+                'create package':[
+                        all: createPackageList.size(),
+                        o: createPackageList.findAll{ it.isOk }.size(),
+                        x: createPackageList.findAll{ !it.isOk }.size()
+                ],
+                'create procedure':[
+                        all: createPocedureList.size(),
+                        o: createPocedureList.findAll{ it.isOk }.size(),
+                        x: createPocedureList.findAll{ !it.isOk }.size()
+                ],
+                'create trigger':[
+                        all: createTriggerList.size(),
+                        o: createTriggerList.findAll{ it.isOk }.size(),
+                        x: createTriggerList.findAll{ !it.isOk }.size()
+                ],
                 'create java':[
                         all: createJavaList.size(),
                         o: createJavaList.findAll{ it.isOk }.size(),
                         x: createJavaList.findAll{ !it.isOk }.size()
+                ],
+                'create etc':[
+                        all: createEtcList.size(),
+                        o: createEtcList.findAll{ it.isOk }.size(),
+                        x: createEtcList.findAll{ !it.isOk }.size()
                 ],
                 'alter':[
                         all: alterList.size(),
@@ -550,6 +586,11 @@ class SqlMan extends SqlAnalMan{
                         all: deleteList.size(),
                         o: deleteList.findAll{ it.isOk }.size(),
                         x: deleteList.findAll{ !it.isOk }.size()
+                ],
+                drop:[
+                        all: dropList.size(),
+                        o: dropList.findAll{ it.isOk }.size(),
+                        x: dropList.findAll{ !it.isOk }.size()
                 ]
         ]
         return summary
@@ -568,11 +609,14 @@ class SqlMan extends SqlAnalMan{
 
     boolean isExistOnSchemeOnDB(SqlObject sqlObj, def catalogList){
         boolean isExist
+        def equalList
         String objectName = sqlObj.objectName
-        int idx = objectName.indexOf(".")
-        objectName = (idx == -1) ? objectName : objectName.substring(idx+1)
-        def equalList = catalogList.findAll{ Map<String, String> row ->
-            return row["OBJECT_NAME"].equalsIgnoreCase(objectName) && row["OBJECT_TYPE"].equalsIgnoreCase(sqlObj.objectType) && row["SCHEME"].equalsIgnoreCase(sqlObj.schemeName)
+        if (objectName){
+            int idx = objectName.indexOf(".")
+            objectName = (idx == -1) ? objectName : objectName.substring(idx+1)
+            equalList = catalogList.findAll{ Map<String, String> row ->
+                return row["OBJECT_NAME"].equalsIgnoreCase(objectName) && row["OBJECT_TYPE"].equalsIgnoreCase(sqlObj.objectType) && row["SCHEME"].equalsIgnoreCase(sqlObj.schemeName)
+            }
         }
         isExist = (equalList) ? true : false
         return isExist
@@ -605,7 +649,12 @@ class SqlMan extends SqlAnalMan{
         def createIndexList         = analysisResultList.findAll { it.commandType.equalsIgnoreCase('CREATE') && it.objectType.equalsIgnoreCase('INDEX') }
         def createViewList          = analysisResultList.findAll { it.commandType.equalsIgnoreCase('CREATE') && it.objectType.equalsIgnoreCase('VIEW') }
         def createSequenceList      = analysisResultList.findAll { it.commandType.equalsIgnoreCase('CREATE') && it.objectType.equalsIgnoreCase('SEQUENCE') }
+        def createProcedureList     = analysisResultList.findAll { it.commandType.equalsIgnoreCase('CREATE') && it.objectType.equalsIgnoreCase('PROCEDURE') }
+        def createPackageList       = analysisResultList.findAll { it.commandType.equalsIgnoreCase('CREATE') && it.objectType.equalsIgnoreCase('PACKAGE') }
         def createFunctionList      = analysisResultList.findAll { it.commandType.equalsIgnoreCase('CREATE') && it.objectType.equalsIgnoreCase('FUNCTION') }
+        def createTriggerList       = analysisResultList.findAll { it.commandType.equalsIgnoreCase('CREATE') && it.objectType.equalsIgnoreCase('TRIGGER') }
+        def createJavaList          = analysisResultList.findAll { it.commandType.equalsIgnoreCase('CREATE') && it.objectType.equalsIgnoreCase('JAVA') }
+        def createEtcList           = analysisResultList.findAll { it.commandType.equalsIgnoreCase('CREATE') && it.objectType.equalsIgnoreCase('ETC') }
         def insertList              = analysisResultList.findAll { it.commandType.equalsIgnoreCase('INSERT') }
         def updateList              = analysisResultList.findAll { it.commandType.equalsIgnoreCase('UPDATE') }
         warningList += getWarningAlreadyExist("create tablespace warning:", createTablespaceList)
@@ -614,7 +663,12 @@ class SqlMan extends SqlAnalMan{
         warningList += getWarningAlreadyExist("create index warning:", createIndexList)
         warningList += getWarningAlreadyExist("create view warning:", createViewList)
         warningList += getWarningAlreadyExist("create sequence warning:", createSequenceList)
+        warningList += getWarningAlreadyExist("create procedure warning:", createProcedureList)
+        warningList += getWarningAlreadyExist("create package warning:", createPackageList)
         warningList += getWarningAlreadyExist("create function warning:", createFunctionList)
+        warningList += getWarningAlreadyExist("create tirgger warning:", createTriggerList)
+        warningList += getWarningAlreadyExist("create java warning:", createJavaList)
+        warningList += getWarningAlreadyExist("create etc warning:", createEtcList)
         warningList += getWarningNotExist("insert warning:", insertList)
         warningList += getWarningNotExist("update warning:", updateList)
         return warningList
