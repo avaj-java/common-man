@@ -24,7 +24,7 @@ import java.sql.Connection
 class QueryMan {
 
     //Logger
-    final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private Logger logger = LoggerFactory.getLogger(this.getClass());
 
     //Package
     private String packagePath = getClass().getName()
@@ -162,6 +162,7 @@ class QueryMan {
     boolean modeToJavaType
     boolean modeTopRank
     boolean modeAutoCreateTable
+    boolean modeFlattenQueryLog = true
     List rankPkAttributes
     String rankOrderAttribute
 
@@ -933,8 +934,6 @@ class QueryMan {
             query = generateCountQuery(query)
 
         values = (param) ? generateValues(param) : []
-        //Log Query & Parameter
-        logQueryParam(query, values)
 
         try{
 
@@ -1013,11 +1012,10 @@ class QueryMan {
             }
             throw e
         }finally{
+            // Log Result
+            logResult(query, values, result)
             disconnect()
         }
-
-        // Log Result
-        logResult(result)
 
         return result
     }
@@ -1059,9 +1057,6 @@ class QueryMan {
         //Value
         values = (param) ? generateValues(param) : []
 
-        //Log Query & Parameter
-        logQueryParam(query, [])
-
         try{
             if (values && !command.equals('create'))
                 result = sql.execute(query, values)
@@ -1084,11 +1079,10 @@ class QueryMan {
             sql.rollback()
             throw e
         }finally{
+            //Log Result
+            logResultForExecute(query, values, result)
             disconnect()
         }
-
-        //Log Result
-        logResultForExecute(result)
 
         return result
     }
@@ -1114,8 +1108,6 @@ class QueryMan {
             if (!attribute || attribute.size() == 0)
                 setAttribute(resultMap.keySet().toList())
             query = this.query ?: generateQuery()
-            //Log Query & Parameter
-            logQueryParam(query, [])
 
             try{
                 result = sql.withBatch(batchSize, query){ BatchingPreparedStatementWrapper ps ->
@@ -1131,11 +1123,10 @@ class QueryMan {
                 sql.rollback()
                 throw e
             }finally{
+                //Log Result
+                logResultForExecute(query, values, result)
                 disconnect()
             }
-
-            //Log Result
-            logResultForExecute(result)
 
         }
 
@@ -1720,35 +1711,58 @@ class QueryMan {
                 String className = stacks[i].getClassName()
                 String methodName = stacks[i].getMethodName()
                 int lineNumber = stacks[i].getLineNumber()
+                String logString = "[${methodName}:${lineNumber}] - <${logName}> \n${logContent}"
                 if (modeJUnitTest){
-                    println "[${methodName}:${lineNumber}] -\n <${logName}> \n${logContent}"
+                    println logString
                 }else{
-//                    logger = LoggerFactory.getLogger(className)
-//                    logger.debug("[${methodName}:${lineNumber}] -\n <${logName}> \n${logContent}")
+                    logger = LoggerFactory.getLogger(className)
+                    logger.debug logString
                 }
                 break
             }
         }
     }
 
-    void logQueryParam(String query, List params){
-        log('Query', " - Parameters: ${params.toString()}\n - Query: ${query}")
+    void logResult(String query, List params, def result){
+        String queryLog = ''
+        String paramLog = ''
+        String resultLog = ''
+        //Query Log
+        if (modeFlattenQueryLog)
+            query = query.replaceAll("\n+", " ").replaceAll("\r+", " ").replaceAll("\t+", " ").replaceAll("\\s+", " ")
+        queryLog = " - Query: ${query}\n"
+        //Parameter Log
+        if (params)
+            paramLog = " - Parameters: ${params.toString()}\n"
+        //Result Log
+        if (result){
+            if (result instanceof List || result instanceof Map)
+                resultLog = " - Size: ${result.size()}"
+            else
+                resultLog = " - Result: ${result}"
+        }
+        log('Query', "${queryLog}${paramLog}${resultLog}")
     }
 
-    void logResult(def result){
-        if (result instanceof List || result instanceof Map)
-            log('Result', " - Size: ${result.size()}\n")
-        else
-            log('Result', " - Result: ${result}\n")
-
-    }
-
-    void logResultForExecute(def result){
-        if (result instanceof List || result instanceof Array)
-            log('Result', " - Success: ${result.findAll{ it == -2 }.size()} / ${result.size()}\n")
-        else if (result instanceof Boolean)
-            log('Result', " - Success: ${result}\n")
-
+    void logResultForExecute(String query, List params, def result){
+        String queryLog = ''
+        String paramLog = ''
+        String resultLog = ''
+        //Query Log
+        if (modeFlattenQueryLog)
+            query = query.replaceAll("\n+", " ").replaceAll("\r+", " ").replaceAll("\t+", " ").replaceAll("\\s+", " ")
+        queryLog = " - Query: ${query}\n"
+        //Parameter Log
+        if (params)
+            paramLog = " - Parameters: ${params.toString()}\n"
+        //Result Log
+        if (result){
+            if (result instanceof List || result instanceof Array)
+                resultLog = " - Success: ${result.findAll{ it == -2 }.size()} / ${result.size()}"
+            else if (result instanceof Boolean)
+                resultLog = " - Success: ${result}"
+        }
+        log('Query', "${queryLog}${paramLog}${resultLog}")
     }
 
     /**
