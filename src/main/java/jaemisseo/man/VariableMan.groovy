@@ -102,7 +102,9 @@ class VariableMan {
     boolean modeExistCodeOnly
     String charset
 
-    String patternToGetVariable = '[$][{][^{}]*\\w+[^{}]*[}]'     // If variable contains some word in ${} then convert to User Set Value or...
+    String variableSign = '$'
+    String patternBodyToGetVariable = '[{][^{}]*\\w+[^{}]*[}]'
+    String patternToGetVariable = "[" +variableSign+ "]" + patternBodyToGetVariable     // If variable contains some word in ${} then convert to User Set Value or...
     String patternToGetMembers = '[(][^(]*[)]'
 
     /**
@@ -117,6 +119,12 @@ class VariableMan {
 
     VariableMan setModeExistCodeOnly(boolean modeExistCodeOnly){
         this.modeExistCodeOnly = modeExistCodeOnly
+        return this
+    }
+
+    VariableMan setVariableSign(String variableSign){
+        this.variableSign = variableSign
+        this.patternToGetVariable = "[" +variableSign+ "]" + patternBodyToGetVariable
         return this
     }
 
@@ -338,7 +346,7 @@ class VariableMan {
         partObj.isCode = true
 
         // 1. get String in ${ }
-        String content = partValue.replaceFirst('[\$]', '').replaceFirst('\\{', '').replaceFirst('\\}', '')
+        String content = partValue.replaceFirst("[${variableSign}]", '').replaceFirst('\\{', '').replaceFirst('\\}', '')
         validateFunc(content)
 
         // 2. Analysis And Run Function

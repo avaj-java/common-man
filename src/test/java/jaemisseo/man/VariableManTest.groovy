@@ -86,6 +86,24 @@ class VariableManTest {
         println varman.setModeExistCodeOnly(false).parse(tempCode)
         println varman.setModeExistCodeOnly(true).parseDefaultVariableOnly(tempCode)
         println varman.setModeExistCodeOnly(false).parseDefaultVariableOnly(tempCode)
+    }
+
+    @Test
+    void signChange(){
+         VariableMan varman = new VariableMan([
+                 'a1': 'a',
+                 'a2': 'aa',
+                 'a3': 'aaa',
+         ])
+        varman.setVariableSign('#')
+        assert varman.parse('${a1} ${a2} ${a3}') == '${a1} ${a2} ${a3}'
+        assert varman.parse('#{a1} #{a2} #{a3}') == 'a aa aaa'
+        assert varman.parse('#{a1} ${a2} #{a3}') == 'a ${a2} aaa'
+
+        varman.setVariableSign('%')
+        assert varman.parse('${a1} ${a2} ${a3}') == '${a1} ${a2} ${a3}'
+        assert varman.parse('%{a1} %{a2} %{a3}') == 'a aa aaa'
+        assert varman.parse('%{a1} ${a2} %{a3}') == 'a ${a2} aaa'
 
     }
 
