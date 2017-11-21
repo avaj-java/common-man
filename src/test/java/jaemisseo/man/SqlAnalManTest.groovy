@@ -2,6 +2,7 @@ package jaemisseo.man
 
 import org.junit.After
 import org.junit.Before
+import org.junit.Ignore
 import org.junit.Test
 
 import java.util.regex.Matcher
@@ -132,6 +133,7 @@ class SqlAnalManTest {
 
 
     @Test
+    @Ignore
     void matchingTest(){
         String query = queryCreateFunction
 //        String pattern = "CREATE\\s{1,2}.{0,50}\\s{0,2}JAVA\\s{0,2}SOURCE\\s{1,2}[^/]{1,20000}\\s*[/]{1}"
@@ -147,8 +149,9 @@ class SqlAnalManTest {
     }
 
     @Test
+    @Ignore
     void matchingTest2(){
-//        SqlAnalMan.SqlObject sqlObj = new SqlAnalMan().getAnalysisObject(queryCreateJava)
+//        SqlAnalMan.SqlObject sqlObj = new SqlAnalMan().getAnalyzedObject(queryCreateJava)
 //        println sqlObj
 
         assert checkMatching(queryCreateJava, SqlMan.CREATE_JAVA)
