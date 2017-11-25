@@ -34,6 +34,14 @@ class PropMan {
         merge(propMap)
     }
 
+    PropMan(Map propMap, List<String> propertyNameFilterTargetList){
+        init()
+        if (propertyNameFilterTargetList)
+            merge(propMap, propertyNameFilterTargetList)
+        else
+            merge(propMap)
+    }
+
     PropMan(String filePath){
         init()
         readFile(filePath)
@@ -381,6 +389,31 @@ class PropMan {
                 properties[it.key] = it.value
         }
         return this
+    }
+
+    PropMan merge(Map propMap, List<String> propertyNameFilterTargetList){
+        propMap.each{ String key, value ->
+            if (key != null && isMatchingProperty(key, propertyNameFilterTargetList))
+                properties[key] = value
+        }
+        return this
+    }
+
+    static boolean isMatchingProperty(String propertyName, List<String> propertyNameFilterTargetList){
+        if (propertyNameFilterTargetList)
+            return propertyNameFilterTargetList.any{ String propertyRange -> isMatchingProperty(propertyName, propertyRange) }
+        else
+            return true
+    }
+
+    static boolean isMatchingProperty(String propertyName, String propertyRange){
+        String regexpStr = propertyRange.replaceAll(/[\/\\]+/, '/')
+                .replace('(', '\\(').replace(')', '\\)')
+                .replace('[', '\\[').replace(']', '\\]')
+                .replace('.', '\\.').replace('$', '\\$')
+                .replace('*',"[^.]*")
+                .replace('[^.]*[^.]*',"\\S*")
+        return propertyName.replace('\\', '/').matches(regexpStr)
     }
 
     /*************************
