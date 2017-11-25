@@ -34,14 +34,6 @@ class PropMan {
         merge(propMap)
     }
 
-    PropMan(Map propMap, List<String> propertyNameFilterTargetList){
-        init()
-        if (propertyNameFilterTargetList)
-            merge(propMap, propertyNameFilterTargetList)
-        else
-            merge(propMap)
-    }
-
     PropMan(String filePath){
         init()
         readFile(filePath)
@@ -52,6 +44,33 @@ class PropMan {
         readFile(file)
     }
 
+    PropMan(Map propMap, List<String> propertyNameFilterTargetList){
+        init()
+        if (propertyNameFilterTargetList)
+            merge(propMap, propertyNameFilterTargetList)
+        else
+            merge(propMap)
+    }
+
+    PropMan(String filePath, List<String> propertyNameFilterTargetList){
+        Map propMap = new PropMan(filePath).properties
+//        PropMan(propMap, propertyNameFilterTargetList)
+        init()
+        if (propertyNameFilterTargetList)
+            merge(propMap, propertyNameFilterTargetList)
+        else
+            merge(propMap)
+    }
+
+    PropMan(File file, List<String> propertyNameFilterTargetList){
+        Map propMap = new PropMan(file).properties
+//        PropMan(propMap, propertyNameFilterTargetList)
+        init()
+        if (propertyNameFilterTargetList)
+            merge(propMap, propertyNameFilterTargetList)
+        else
+            merge(propMap)
+    }
 
 
     PropMan init(){
