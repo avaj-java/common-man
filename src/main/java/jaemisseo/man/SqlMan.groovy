@@ -640,7 +640,11 @@ class SqlMan extends SqlAnalMan{
             int idx = objectName.indexOf(".")
             objectName = (idx == -1) ? objectName : objectName.substring(idx+1)
             equalList = catalogList.findAll{ Map<String, String> row ->
-                return row["OBJECT_NAME"].equalsIgnoreCase(objectName) && row["OBJECT_TYPE"].equalsIgnoreCase(sqlObj.objectType) && row["SCHEME"].equalsIgnoreCase(sqlObj.schemeName)
+                return (
+                    row["OBJECT_NAME"].equalsIgnoreCase(objectName)
+                    && row["OBJECT_TYPE"].equalsIgnoreCase(sqlObj.objectType)
+                    && row["SCHEME"].equalsIgnoreCase(sqlObj.schemeName ?: connectedOpt.user)
+                )
             }
         }
         isExist = (equalList) ? true : false
