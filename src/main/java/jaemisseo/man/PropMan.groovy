@@ -1,7 +1,7 @@
 package jaemisseo.man
 
 import jaemisseo.man.bean.FileSetup
-import jaemisseo.man.util.UndoPropertiesObject
+import jaemisseo.man.util.CommitObject
 import groovy.json.JsonSlurper
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -15,7 +15,7 @@ class PropMan {
 
     Properties properties = new Properties()
     Properties lastCommitProperties  = new Properties()
-    List<UndoPropertiesObject> undoStackList = []
+    List<CommitObject> commitStackList = []
     int headIndex = -1
 
     String nowPath
@@ -426,7 +426,7 @@ class PropMan {
     }
 
     static boolean isMatchingProperty(String propertyName, String propertyRange){
-        String regexpStr = propertyRange.replaceAll(/[\/\\]+/, '/')
+        String regexpStr = toSlash(propertyRange)
                 .replace('(', '\\(').replace(')', '\\)')
                 .replace('[', '\\[').replace(']', '\\]')
                 .replace('.', '\\.').replace('$', '\\$')
@@ -625,7 +625,7 @@ class PropMan {
 
     /*************************
      *
-     * UNDO & REDO MANAGER
+     * UNDO & REDO Commit MANAGER
      *
      *************************/
     PropMan undo(){
@@ -634,6 +634,16 @@ class PropMan {
     }
 
     PropMan redo(){
+        checkout(headIndex + 1)
+        return this
+    }
+
+    PropMan resetHard(){
+        commitStackList = commitStackList[0..headIndex]
+        return this
+    }
+
+    PropMan reset(){
         checkout(headIndex + 1)
         return this
     }
@@ -647,7 +657,7 @@ class PropMan {
         }else if (checkIndex == headIndex){
             properties = lastCommitProperties.clone()
 
-        }else if (undoStackList && -1 < checkIndex && checkIndex < undoStackList.size()){
+        }else if (commitStackList && -1 < checkIndex && checkIndex < commitStackList.size()){
             properties = new Properties()
             properties.putAll(gen(checkIndex))
             lastCommitProperties = properties.clone()
@@ -657,16 +667,31 @@ class PropMan {
     }
 
     PropMan commit(){
+        return commit('none_id')
+    }
+
+    PropMan commit(String commitId){
         //CASE headIndex is Not Top Index
         //Delete Greater than headIndex
         if (isNotHeadLast())
-            undoStackList = (headIndex != -1) ? undoStackList[0..headIndex] : []
+            commitStackList = (headIndex != -1) ? commitStackList[0..headIndex] : []
 
         //CASE headIndex is Top Index
         if (isHeadLast()){
-            undoStackList << new UndoPropertiesObject().gap(lastCommitProperties, properties)
-            headIndex = undoStackList.size() - 1
+            commitStackList << new CommitObject(commitId).gap(lastCommitProperties, properties)
+            headIndex = commitStackList.size() - 1
             lastCommitProperties = properties.clone()
+        }
+
+        //Top Commit's Relation
+        CommitObject topCommit = commitStackList[headIndex]
+        topCommit.child = null
+
+        //Second Commit's Relation
+        if (commitStackList && commitStackList.size() > 1){
+            CommitObject secondCommit = commitStackList[headIndex-1]
+            topCommit.parent = secondCommit
+            secondCommit.child = topCommit
         }
         return this
     }
@@ -676,11 +701,11 @@ class PropMan {
         return this
     }
 
-    Map gen(int index){
+    Map gen(int commitIndex){
         Map resultMap = [:]
-        List<UndoPropertiesObject> tempStackList
-        if (undoStackList && index < undoStackList.size()){
-            tempStackList = undoStackList[0..index]
+        List<CommitObject> tempStackList
+        if (commitStackList && commitIndex < commitStackList.size()){
+            tempStackList = commitStackList[0..commitIndex]
             tempStackList.each{
                 it.insertedMap.each{
                     resultMap[it.key] = it.value
@@ -696,12 +721,44 @@ class PropMan {
         return resultMap
     }
 
+    CommitObject getCommit(){
+        return getCommit(this.headIndex)
+    }
+
+    CommitObject getCommit(int headIndex){
+        return commitStackList[headIndex]
+    }
+
+    String getCommitId(){
+        return getCommitId(this.headIndex)
+    }
+
+    String getCommitId(int headIndex){
+        return commitStackList[headIndex].id
+    }
+
+    CommitObject getBeforeCommit(){
+        return getCommit(this.headIndex -1)
+    }
+
+    CommitObject getNextCommit(){
+        return getCommit(this.headIndex +1)
+    }
+
+    boolean isHeadFirst(){
+        return (headIndex == 0)
+    }
+
     boolean isNotHeadLast(){
-        return (headIndex < undoStackList.size() - 1)
+        return (headIndex < commitStackList.size() - 1)
     }
 
     boolean isHeadLast(){
-        return (headIndex == undoStackList.size() - 1)
+        return (headIndex == commitStackList.size() - 1)
+    }
+
+    static toSlash(String path){
+        return path?.replaceAll(/[\/\\]+/, '/')
     }
 
 }
