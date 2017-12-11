@@ -213,7 +213,8 @@ class SqlMan extends SqlAnalMan{
             logger.info '- Collecting OBJECT from DB...'
             Map data = Util.startPrinter(3, 20, localOpt.modeSqlProgressBar)
             // - Collecting OBJECT
-            existObjectList = sql.rows("SELECT OBJECT_NAME, OBJECT_TYPE, OWNER AS SCHEME FROM ALL_OBJECTS")
+//            existObjectList = sql.rows("SELECT OBJECT_NAME, OBJECT_TYPE, OWNER AS SCHEME FROM ALL_OBJECTS")
+            existObjectList = sql.rows("SELECT OBJECT_NAME, OBJECT_TYPE FROM USER_OBJECTS")
             // - Collecting TABLESPACE
             def resultsForTablespace = analysisResultList.findAll{ it.commandType.equalsIgnoreCase("CREATE") && it.objectType.equalsIgnoreCase("TABLESPACE") }
             if (resultsForTablespace){
@@ -643,7 +644,7 @@ class SqlMan extends SqlAnalMan{
                 return (
                     row["OBJECT_NAME"].equalsIgnoreCase(objectName)
                     && row["OBJECT_TYPE"].equalsIgnoreCase(sqlObj.objectType)
-                    && row["SCHEME"].equalsIgnoreCase(sqlObj.schemeName ?: connectedOpt.user)
+//                    && row["SCHEME"].equalsIgnoreCase(sqlObj.schemeName ?: connectedOpt.user)
                 )
             }
         }
