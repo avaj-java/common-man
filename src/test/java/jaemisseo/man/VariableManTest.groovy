@@ -21,8 +21,8 @@ class VariableManTest {
 
         //VariableMan 생성
         VariableMan varman = new VariableMan('EUC-KR', [
-                noContent                     : "",
-                nullContent                     : null,
+                noContent                    : "",
+                nullContent                  : null,
                 USERNAME                     : "하이하이하이",
                 lowerChar                    : "hi everybody",
                 upperChar                    : "HI EVERYBODY",
@@ -31,7 +31,7 @@ class VariableManTest {
                 s2                           : 'ㅋㅋㅋ\nㅋㅋl',
                 num                          : '010-9911-0321',
                 'installer.level.1.file.path': '/foo/bar',
-
+                'nvl.test'                   : '',
         ])
 //        .setModeDebug(true)
 
@@ -63,6 +63,10 @@ class VariableManTest {
         // Test - numberOnly()
         assert varman.parse('[${num(15)}] / [${num().numberOnly()}] / [${num(15).numberOnly()}] / [${num(15).numberOnly().right()}]') == '[010-9911-0321  ] / [01099110321] / [01099110321    ] / [01099110321    ]'
 
+        // Test - nvl()
+        assert varman.parse('${nvl.test().nvl()} hahaha ${nvl.test().nvl(hohoho)} ${USERNAME().nvl()} ${USERNAME().nvl(hehehe)}') == ' hahaha hohoho 하이하이하이 하이하이하이'
+
+        // Test - length
         assert varman.parse('${installer.level.1.file.path}') == '/foo/bar'
         assert varman.parse('${installer.level.1.file.path()}') == '/foo/bar'
         assert varman.parse('${installer.level.1.file.path(3)}') == '/fo'

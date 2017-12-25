@@ -77,6 +77,7 @@ class VariableMan {
      */
     class OnePartObject {
         String partValue = ''
+        String originalCode = ''
         String valueCode = ''
         String substitutes = ''
         String parsedValue = ''
@@ -93,6 +94,7 @@ class VariableMan {
         String overValue = ''
         String funcNm = ''
         String[] members = []
+        Map<String, List<String>> funcNameMemberListMap = [:]
     }
 
     Map<String, String> variableStringMap = [:]
@@ -385,11 +387,13 @@ class VariableMan {
             }
             // run variable or func
             if (funcNm){
+                String originalCode = funcNm
                 funcNm = funcNm.toUpperCase()
                 partObj.funcNm = funcNm
                 partObj.members = members
                 // 1) Get Variable's Value
                 if ( procIdx == 0){
+                    partObj.originalCode = originalCode
                     partObj.valueCode = funcNm
                     getVariableValue(partObj, variableStringMap)
 
@@ -634,6 +638,14 @@ class VariableMan {
                 },
                 'NUMBERONLY': { OnePartObject it ->
                     it.substitutes = (it.substitutes) ? it.substitutes.replaceAll("[^0-9.]", "") : ""
+                },
+                //SJTEST
+                'NVL': { OnePartObject it ->
+                    if (!it.substitutes && it.members){
+                        String nvlValue = it.members[0]
+                        if (nvlValue)
+                            it.substitutes = nvlValue
+                    }
                 }
         ]
     }
