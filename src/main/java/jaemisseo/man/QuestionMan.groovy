@@ -182,7 +182,7 @@ class QuestionMan {
             //Check Answer
             logger.info "=> ${yourAnswer}\n"
             if (!isOk){
-                logger.error "Not Good Answer. Please Answer Angain"
+                logger.warn "Not Good Answer. Please Answer Angain"
                 yourAnswer = ""
             }
 

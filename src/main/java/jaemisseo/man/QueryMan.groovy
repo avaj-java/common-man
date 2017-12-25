@@ -40,25 +40,26 @@ class QueryMan {
             setDatasource(map)
         }
 
-        static final String ORACLE = "ORACLE"
-        static final String TIBERO = "TIBERO"
-//        static final String SYBASE_IQ = "SYBASE_IQ"
-//        static final String SYBASE_ASE = "SYBASE_ASE"
-//        static final String MYSQL = "MYSQL"
-//        static final String DB2 = "DB2"
+        static final String ORACLE = "ORACLE"           // 'jdbc:oracle:thin:' 'oracle.jdbc.driver.OracleDriver'
+        static final String TIBERO = "TIBERO"           // 'jdbc:tibero:thin:' 'com.tmax.tibero.jdbc.TbDriver'
+        static final String MYSQL = "MYSQL"             // 'jdbc:mysql:' 'com.mysql.jdbc.Driver'
+        static final String MSSQL = "MSSQL"             // 'jdbc:sqlserver:' 'com.microsoft.sqlserver.jdbc.SQLServerDriver'
+        static final String INFORMIX = "INFORMIX"       // 'jdbc:informix-sqli:' 'com.informix.jdbc.IfxDriver'
+        static final String ALTIBASE = "ALTIBASE"       // 'jdbc:Altibase:' 'Altibase.jdbc.driver.AltibaseDriver'
+        static final String SYBASE = "SYBASE"           // 'jdbc:sybase:Tds:' 'com.sybase.jdbc3.jdbc.SybDriver'
+        static final String IBM_DB = "IBM_DB"           // 'jdbc:db2:' 'com.ibm.db2.jcc.DB2Driver'
 
-
-        String vendor, id, pw, ip, port, db, url, driver
+        String vendor, user, password, ip, port, db, url, driver
 
         ConnectionGenerator init(){
-            vendor=null; id=null; pw=null; ip=null; port=null; db=null; url=null; driver=null;
+            vendor=null; user=null; password=null; ip=null; port=null; db=null; url=null; driver=null;
             return this
         }
 
         ConnectionGenerator setDatasource(Map map){
             vendor  = map['vendor']
-            id      = map['id']
-            pw      = map['pw']
+            user    = map['user']
+            password= map['password']
             ip      = map['ip']
             port    = map['port']
             db      = map['db']
@@ -70,13 +71,13 @@ class QueryMan {
         Map<String, String> generateDataBaseInfoMap(){
             Map o = [
                 vendor  : vendor ?: ORACLE,
-                id      : id,
-                pw      : pw,
+                user    : user,
+                password: password,
                 ip      : ip ?: "127.0.0.1",
                 port    : port ?: "1521",
                 db      : db ?: "orcl",
             ]
-            o['url']    = url ?: "${getURLProtocol(o.vendor)}@${o.ip}:${o.port}:${o.db}"
+            o['url']    = url ?: getURLProtocol(o.vendor, o.ip, o.port, o.db)
             o['driver'] = driver ?: getDriverName(o.vendor)
             return o
         }
@@ -87,32 +88,82 @@ class QueryMan {
         }
 
         Connection generate(){
-            Sql sql
-            Map<String, String> m = generateDataBaseInfoMap()
-            sql = Sql.newInstance(m.url, m.id, m.pw, m.driver)
+            Sql sql = generateSqlInstance()
             return sql.getConnection()
         }
 
+        Sql generateSqlInstance(){
+            Map<String, String> map = generateDataBaseInfoMap()
+            return Sql.newInstance(map.url, map.user, map.password, map.driver)
+        }
+
         String getDriverName(String vendor){
-            vendor = (vendor) ?: ORACLE
-            vendor = vendor?.toUpperCase()
-            String driver = ''
-            //Get By Vendor
-            if (vendor.equals(ORACLE)) driver = 'oracle.jdbc.driver.OracleDriver'
-            else if (vendor.equals(TIBERO)) driver = 'com.tmax.tibero.jdbc.TbDriver'
+            String driver
+            switch (vendor?.toUpperCase()){
+                case ORACLE:
+                    driver = "oracle.jdbc.driver.OracleDriver"
+                    break
+                case TIBERO:
+                    driver = "com.tmax.tibero.jdbc.TbDriver"
+                    break
+                case MYSQL:
+                    driver = 'com.mysql.jdbc.Driver'
+                    break
+                case MSSQL:
+                    driver = 'com.microsoft.sqlserver.jdbc.SQLServerDriver'
+                    break
+                case INFORMIX:
+                    driver = 'com.informix.jdbc.IfxDriver'
+                    break
+                case ALTIBASE:
+                    driver = 'Altibase.jdbc.driver.AltibaseDriver'
+                    break
+                case SYBASE:
+                    driver = 'com.sybase.jdbc3.jdbc.SybDriver'
+                    break
+                case IBM_DB:
+                    driver = 'com.ibm.db2.jcc.DB2Driver'
+                    break
+                default:
+                    driver = "oracle.jdbc.driver.OracleDriver"
+                    break
+            }
             return driver
         }
 
-        String getURLProtocol(String vendor){
-            vendor = (vendor) ?: ORACLE
-            vendor = vendor?.toUpperCase()
-            String URLProtocol = ''
-            //Get By Vendor
-            if (vendor.equals(ORACLE)) URLProtocol = 'jdbc:oracle:thin:'
-            else if (vendor.equals(TIBERO)) URLProtocol = 'jdbc:tibero:thin:'
+        String getURLProtocol(String vendor, String ip, String port, String db) {
+            String URLProtocol
+            switch (vendor?.toUpperCase()) {
+                case ORACLE:
+                    URLProtocol = "jdbc:oracle:thin:@${ip}:${port}:${db}"
+                    break
+                case TIBERO:
+                    URLProtocol = "jdbc:tibero:thin:@${ip}:${port}:${db}"
+                    break
+                case MYSQL:
+                    URLProtocol = "jdbc:mysql:${ip}:${port}:${db}"
+                    break
+                case MSSQL:
+                    URLProtocol = "jdbc:sqlserver:${ip}:${port}:${db}"
+                    break
+                case INFORMIX:
+                    URLProtocol = "jdbc:informix-sqli:${ip}:${port}:${db}"
+                    break
+                case ALTIBASE:
+                    URLProtocol = "jdbc:Altibase:${ip}:${port}:${db}"
+                    break
+                case SYBASE:
+                    URLProtocol = "jdbc:sybase:Tds:${ip}:${port}:${db}"
+                    break
+                case IBM_DB:
+                    URLProtocol = "jdbc:db2:${ip}:${port}:${db}"
+                    break
+                default:
+                    URLProtocol = "jdbc:oracle:thin:@${ip}:${port}:${db}"
+                    break
+            }
             return URLProtocol
         }
-
     }
 
 
@@ -372,8 +423,8 @@ class QueryMan {
         this.conn = connGen.generate()
         return this
     }
-    QueryMan setConnection(String vendor, String ip, String port, String db, String id, String pw){
-        this.conn = new ConnectionGenerator(vendor:vendor, ip:ip, port:port, db:db, id:id, pw:pw).generate()
+    QueryMan setConnection(String vendor, String ip, String port, String db, String user, String password){
+        this.conn = new ConnectionGenerator(vendor:vendor, ip:ip, port:port, db:db, user:user, password:password).generate()
         return this
     }
     QueryMan setConnection(Map<String, String> dbInfoMap){

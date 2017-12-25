@@ -22,6 +22,8 @@ class PropMan {
     String filePath
     Closure beforeGetClosure
 
+    boolean modeIgnoreBeforeGetClosure
+
 
 
 
@@ -105,7 +107,7 @@ class PropMan {
     def get(String key, Closure beforeClosure){
         def val = properties[key]
         if (val) {
-            if (beforeClosure || beforeGetClosure){
+            if (!modeIgnoreBeforeGetClosure && (beforeClosure || beforeGetClosure)){
                 if (beforeClosure)
                     beforeClosure(key, val)
                 else if (beforeGetClosure)
@@ -116,17 +118,21 @@ class PropMan {
         return val
     }
 
+    def getRaw(String key){
+        return get(key, { k, v -> })
+    }
+
     String getString(String key){
-        return (get(key, null) as String)
+        return (get(key) as String)
     }
 
     Integer getInteger(String key){
-        String value = get(key, null)
+        String value = get(key)
         return (!value) ? null : Integer.parseInt(value)
     }
 
     Boolean getBoolean(String key){
-        String value = get(key, null)
+        String value = get(key)
         return (!value) ? null : (value != '0' && value != 'false') ? true : false
     }
 
@@ -148,7 +154,7 @@ class PropMan {
     def parse(String key, Closure beforeClosure){
         def val = properties[key]
         if (val && val instanceof String){
-            if (beforeClosure || beforeGetClosure){
+            if (!modeIgnoreBeforeGetClosure && (beforeClosure || beforeGetClosure)){
                 if (beforeClosure)
                     beforeClosure(key, val)
                 else if (beforeGetClosure)
@@ -530,6 +536,12 @@ class PropMan {
                 isRootPath = true
         }
         return isRootPath
+    }
+
+
+
+    List<String> getPropertyList(){
+        return properties.keySet().toList()
     }
 
 

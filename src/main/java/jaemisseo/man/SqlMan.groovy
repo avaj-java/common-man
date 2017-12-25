@@ -211,17 +211,20 @@ class SqlMan extends SqlAnalMan{
              * Collecting Information
              **/
             logger.info '- Collecting OBJECT from DB...'
-            Map data = Util.startPrinter(3, 20, localOpt.modeSqlProgressBar)
+            Map data = Util.startPrinter(3, 20, localOpt.modeProgressBar)
             // - Collecting OBJECT
 //            existObjectList = sql.rows("SELECT OBJECT_NAME, OBJECT_TYPE, OWNER AS SCHEME FROM ALL_OBJECTS")
+            data.count++
             existObjectList = sql.rows("SELECT OBJECT_NAME, OBJECT_TYPE FROM USER_OBJECTS")
             // - Collecting TABLESPACE
+            data.count++
             def resultsForTablespace = analysisResultList.findAll{ it.commandType.equalsIgnoreCase("CREATE") && it.objectType.equalsIgnoreCase("TABLESPACE") }
             if (resultsForTablespace){
                 data.stringList << '- Collecting TABLESPACE from DB...'
                 existTablespaceList = sql.rows("SELECT TABLESPACE_NAME AS OBJECT_NAME, 'TABLESPACE' AS OBJECT_TYPE FROM USER_TABLESPACES")
             }
             // - Collecting USER
+            data.count++
             def resultsForUser = analysisResultList.findAll{ it.commandType.equalsIgnoreCase("CREATE") && it.objectType.equalsIgnoreCase("USER") }
             if (resultsForUser){
                 data.stringList << '- Collecting USER from DB...'
@@ -234,7 +237,7 @@ class SqlMan extends SqlAnalMan{
              **/
             // - Check Exist Object
             logger.info '- Check OBJECT...'
-            Util.eachWithTimeProgressBar(analysisResultList, 20, connectedOpt.modeSqlProgressBar){
+            Util.eachWithTimeProgressBar(analysisResultList, 20, connectedOpt.modeProgressBar){
                 SqlObject obj = it.item
                 //PLSQL and DELETE and DROP are ignored from BeforeCheck
                 //Others do BeforeCheck
@@ -255,7 +258,7 @@ class SqlMan extends SqlAnalMan{
             // - Check Exist TableSpace
             if (resultsForTablespace){
                 logger.info '- Check TABLESPACE...'
-                Util.eachWithTimeProgressBar(resultsForTablespace, 20, connectedOpt.modeSqlProgressBar){
+                Util.eachWithTimeProgressBar(resultsForTablespace, 20, connectedOpt.modeProgressBar){
                     SqlObject obj = it.item
                     obj.isExistOnDB = isExistOnDB(obj, existTablespaceList)
                     if (obj.isExistOnDB)
@@ -266,7 +269,7 @@ class SqlMan extends SqlAnalMan{
             // - Check Exist User
             if (resultsForUser){
                 logger.info '- Check USER...'
-                Util.eachWithTimeProgressBar(resultsForUser, 20, connectedOpt.modeSqlProgressBar){
+                Util.eachWithTimeProgressBar(resultsForUser, 20, connectedOpt.modeProgressBar){
                     SqlObject obj = it.item
                     obj.isExistOnDB = isExistOnDB(obj, existUserList)
                     if (obj.isExistOnDB)
@@ -309,7 +312,7 @@ class SqlMan extends SqlAnalMan{
         def resultList = []
         if (!modeInnerQueriesAnalysis)
             logger.info "- Replace Object Name..."
-        Util.eachWithTimeProgressBar(m, 20, opt.modeSqlProgressBar) { data ->
+        Util.eachWithTimeProgressBar(m, 20, opt.modeProgressBar) { data ->
             String query = data.item
             int count = data.count
             SqlObject sqlObj = getAnalyzedObject(query)
@@ -320,7 +323,7 @@ class SqlMan extends SqlAnalMan{
                 SqlMan plsqlman = this.class.newInstance().init().query(plsqlQuery).command([SqlMan.ALL_WITHOUT_PLSQL, SqlMan.SELECT])
                 plsqlman.modeInnerQueriesAnalysis = true
                 List<String> matchedQueryList = plsqlman.getMatchedQueryList()
-                List<SqlObject> InPlsqlReplacedQueryList = plsqlman.replace(opt.clone().put([modeSqlProgressBar:false])).getAnalysisResultList()
+                List<SqlObject> InPlsqlReplacedQueryList = plsqlman.replace(opt.clone().put([modeProgressBar:false])).getAnalysisResultList()
                 InPlsqlReplacedQueryList.eachWithIndex{ SqlObject plsqlobj, int i ->
                     sqlObj.query = sqlObj.query.replace(matchedQueryList[i], plsqlobj.query)
                 }
@@ -355,7 +358,7 @@ class SqlMan extends SqlAnalMan{
         connect(localOpt)
         sql.withTransaction{
             logger.info "- Executing Sqls..."
-            Util.eachWithTimeProgressBar(analysisResultList, 20, connectedOpt.modeSqlProgressBar){ data ->
+            Util.eachWithTimeProgressBar(analysisResultList, 20, connectedOpt.modeProgressBar){ data ->
                 SqlObject sqlObj = data.item
                 int count = data.count
                 try{

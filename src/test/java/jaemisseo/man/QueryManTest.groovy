@@ -78,8 +78,8 @@ class QueryManTest {
         updateQuery = "update insa_jb_dqm set email = 'QueryMan_TEST@mail.com' where swbeonho='new1' and name='뉴사용자1' "
         deleteQuery = "delete from insa_jb_dqm where swbeonho='new1' and name='뉴사용자1'"
 
-        dbInfo = [ip:'127.0.0.1', db:'orcl', id:'tester', pw:'tester']
-        dbInfo2 = [ip:'127.0.0.1', db:'orcl', id:'tester2', pw:'tester2']
+        dbInfo = [ip:'127.0.0.1', db:'orcl', user:'tester', password:'tester']
+        dbInfo2 = [ip:'127.0.0.1', db:'orcl', user:'tester2', password:'tester2']
 
         ConnectionGenerator connGen = new ConnectionGenerator()
         conn = connGen.generate(dbInfo)
