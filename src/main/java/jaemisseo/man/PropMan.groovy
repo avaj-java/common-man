@@ -91,6 +91,13 @@ class PropMan {
     }
 
     /**********
+     * HAS DATA
+     **********/
+    boolean has(String key){
+        return properties.containsKey(key)
+    }
+
+    /**********
      * SET DATA
      **********/
     void set(String key, def data){
@@ -170,7 +177,7 @@ class PropMan {
                     return obj
             }
         }
-        return val ?: null
+        return val
     }
 
 
