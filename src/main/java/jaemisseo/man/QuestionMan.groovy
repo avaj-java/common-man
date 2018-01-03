@@ -213,9 +213,9 @@ class QuestionMan {
         List<String> lineList = []
         Map descriptionMap = nowOpt.descriptionMap
         if (descriptionMap){
-            descriptionMap.sort{ a,b -> a.key <=> b.key }.each{
-                lineList << "  ${it.key}) ${it.value}"
-            }
+            descriptionMap
+//                    .sort{ a,b -> a.key <=> b.key }
+                    .each{ lineList << "  ${it.key}) ${it.value}" }
         }
         return lineList
     }
