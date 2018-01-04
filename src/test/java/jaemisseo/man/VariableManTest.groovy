@@ -17,7 +17,7 @@ class VariableManTest {
 
 
     @Test
-    void "간단 테스트"() {
+    void parse() {
 
         //VariableMan 생성
         VariableMan varman = new VariableMan('EUC-KR', [
@@ -91,6 +91,52 @@ class VariableManTest {
         println varman.setModeExistCodeOnly(true).parseDefaultVariableOnly(tempCode)
         println varman.setModeExistCodeOnly(false).parseDefaultVariableOnly(tempCode)
     }
+
+    @Test
+    void parsedDataList() {
+        List<VariableMan.OnePartObject> list
+
+        //VariableMan 생성
+        VariableMan varman = new VariableMan('EUC-KR', [
+                noContent                    : "",
+                nullContent                  : null,
+                USERNAME                     : "하이하이하이",
+                lowerChar                    : "hi everybody",
+                upperChar                    : "HI EVERYBODY",
+                syntaxTest                   : 'HI ${}EVERYBODY${}',
+                s                            : '하하하\\n하하하',
+                s2                           : 'ㅋㅋㅋ\nㅋㅋl',
+                num                          : '010-9911-0321',
+                'installer.level.1.file.path': '/foo/bar',
+                'nvl.test'                   : '',
+        ])
+
+        varman.setModeExistFunctionOnly(false)
+
+        // Test empty string
+        varman.parsedDataList('') == ""
+
+        // Test - left() and right()
+        list = varman.parsedDataList('${USERNAME(8).left(jjjj)}asfd')
+        list = varman.parsedDataList('${USERNAME()}asfd')
+        list = varman.parsedDataList('${USERNAME}asfd')
+        list = varman.parsedDataList('${USERNAME(8)}asfd')
+        list = varman.parsedDataList('${USERNAME(8).right()}asfd')
+        list = varman.parsedDataList('${USERNAME(14).right()}asfd')
+
+        list = varman.parsedDataList('${USERNAME(14).nvl()}asfd')
+        assert list[0].hasFunc('nvl')
+        assert list[0].getMember('nvl') == [""] as String[]
+        assert list[0].getMember('nvl', 0) == ""
+        assert list[0].getMember('nonefunc') == null
+        assert list[0].getMember('nonefunc', 0) == null
+
+        list = varman.parsedDataList('${USERNAME(14).nonefunc(dddd)}asfd')
+        assert list[0].hasFunc('nonefunc')
+        assert list[0].getMember('nonefunc') == ['dddd'] as String[]
+        assert list[0].getMember('nonefunc', 0) == 'dddd'
+    }
+
 
     @Test
     void signChange(){

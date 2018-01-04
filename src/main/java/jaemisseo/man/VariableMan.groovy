@@ -94,7 +94,18 @@ class VariableMan {
         String overValue = ''
         String funcNm = ''
         String[] members = []
-        Map<String, List<String>> funcNameMemberListMap = [:]
+        Map<String, String[]> funcNameMemberListMap = [:]
+
+        boolean hasFunc(String functionName){
+            return funcNameMemberListMap.containsKey(functionName.toUpperCase())
+        }
+        String[] getMember(String functionName){
+            return funcNameMemberListMap[functionName.toUpperCase()]
+        }
+        String getMember(String functionName, int memberIndex){
+            String[] members = getMember(functionName)
+            return members ? members[memberIndex] : null
+        }
     }
 
     Map<String, String> variableStringMap = [:]
@@ -102,6 +113,7 @@ class VariableMan {
     Map<String, Closure> FuncMap = [:]
     boolean modeDebug
     boolean modeExistCodeOnly
+    boolean modeExistFunctionOnly = true
     String charset
 
     String variableSign = '$'
@@ -121,6 +133,11 @@ class VariableMan {
 
     VariableMan setModeExistCodeOnly(boolean modeExistCodeOnly){
         this.modeExistCodeOnly = modeExistCodeOnly
+        return this
+    }
+
+    VariableMan setModeExistFunctionOnly(boolean modeExistFunctionOnly){
+        this.modeExistFunctionOnly = modeExistFunctionOnly
         return this
     }
 
@@ -398,9 +415,14 @@ class VariableMan {
                     getVariableValue(partObj, variableStringMap)
 
                 // 2) Run Fucntions To Adjust Value
-                }else if ( procIdx > 0 && containsKeyIgnoreCase(funcMap, funcNm) ){
-                    runFunc(partObj)
-
+                }else if ( procIdx > 0){
+                    if (!modeExistFunctionOnly || (modeExistFunctionOnly && containsKeyIgnoreCase(funcMap, funcNm))){
+                        partObj.funcNameMemberListMap = partObj.funcNameMemberListMap ?: [:]
+                        partObj.funcNameMemberListMap[funcNm] = partObj.members
+                        runFunc(partObj)
+                    }else{
+                        throw new Exception( ErrorMessage.VAR4.msg, new Throwable("[${funcNm}]") )
+                    }
                 }else{
                     throw new Exception( ErrorMessage.VAR4.msg, new Throwable("[${funcNm}]") )
                 }
