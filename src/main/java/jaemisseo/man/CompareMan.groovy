@@ -1,5 +1,6 @@
 package jaemisseo.man
 
+import jaemisseo.man.code.ChangeStatusCode
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -12,7 +13,7 @@ import org.slf4j.LoggerFactory
  */
 class CompareMan {
 
-    final Logger logger = LoggerFactory.getLogger(this.getClass());
+    static final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     List compareField
     def statusNone
@@ -111,8 +112,8 @@ class CompareMan {
             }
         }
 
-        // status REMOVED
-        standardObject.findAll{ !it.value.status }.each{ String key, def standard ->
+        // INPUT Status(Removed)
+        standardObject.findAll{ !it.value[statusFieldName] }.each{ String key, def standard ->
             standard[statusFieldName] = statusRemoved
             if (closureRemovedObject)
                 closureRemovedObject(standard)
@@ -121,9 +122,9 @@ class CompareMan {
     }
 
     Map getChangedMap(){
-        Map removedMap = standardObject.findAll{ it.value.status == statusRemoved }
+        Map removedMap = standardObject.findAll{ it.value[statusFieldName] == statusRemoved }
         targetObject.putAll(removedMap)
-        Map changedUserMap = targetObject.findAll{ it.value.status != statusNone }
+        Map changedUserMap = targetObject.findAll{ it.value[statusFieldName] != statusNone }
         return changedUserMap
     }
 
@@ -141,5 +142,72 @@ class CompareMan {
         return isOk
     }
 
+
+
+    /*************************
+     * 비교하여 상태값 저장하기
+     *
+     *  - standardData = 특정 Bean 또는 List
+     *  - targetData = 특정 Bean 또는 List
+     *  - keyAttributenName = 아이디값을 갖고 있는 필드명
+     *  - statusAttributeName = 상태값을 넣을 필드명
+     *  - compareAttributeList = 비교할 필드명 List
+     *************************/
+    static List<Object> compare(Object standardData, Object targetData, String keyAttributeName, String statusAttributeName, List<String> compareAttributeList){
+        return compare(standardData, targetData, [keyAttributeName], statusAttributeName, compareAttributeList)
+    }
+
+    static List<Object> compare(Object standardData, Object targetData, List<String> keyAttributeNameList, String statusAttributeName, List<String> compareAttributeList){
+        Map<String, Object> standardDataMap = toIdDataMap(standardData, keyAttributeNameList)
+        Map<String, Object> targetDataMap = toIdDataMap(targetData, keyAttributeNameList)
+        List<Object> changedList = compare(standardDataMap, targetDataMap, statusAttributeName, compareAttributeList)
+        return changedList
+    }
+
+    static List<Object> compare(Map<String, Object> standardDataMap, Map<String, Object> targetDataMap, String statusAttributeName, List<String> compareAttributeList){
+        //3. 동기화 설정 (Meta:Target)
+        CompareMan compareMan = new CompareMan()
+                .setStandardObject(standardDataMap)
+                .setTargetObject(targetDataMap)
+                .setCompareField(compareAttributeList)
+                .setStatusFieldName(statusAttributeName)
+                .setStatusNone(ChangeStatusCode.NONE)
+                .setStatusNew(ChangeStatusCode.NEW)
+                .setStatusModified(ChangeStatusCode.MODIFIED)
+                .setStatusRemoved(ChangeStatusCode.REMOVED)
+                .eachNewObject{ Object standardData, Object targetData ->
+                    /** [신규]시 **/
+                    logger.debug(" - NEW")
+                }
+                .eachModifiedObject{ Object standardData, Object targetData ->
+                    /** [수정]시 **/
+                    logger.debug(" - MOD")
+                }
+                .eachRemovedObject{ Object standardData ->
+                    /** [삭제]시 **/
+                    logger.debug(" - DEL")
+                }
+
+        //4. 동기화 설정 적용
+        compareMan.inputStatus()
+        return compareMan.getChangedList()
+    }
+
+    static Map<String, Object> toIdDataMap(Object object, List<String> keyFieldNameList){
+        Map<String, Object> resultMap = [:]
+        switch (object){
+            case {object instanceof List}:
+                object.each{ Object item ->
+                    String key = keyFieldNameList.collect{ item[it] }.join('+')
+                    resultMap[key] = item
+                }
+                break
+            default:
+                String key = keyFieldNameList.collect{ object[it] }.join('+')
+                resultMap[key] = object
+                break
+        }
+        return resultMap
+    }
 
 }
