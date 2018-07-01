@@ -82,29 +82,30 @@ class CompareMan {
         return this
     }
 
-
-
+    /**************************************************
+     * INPUT STATUS
+     **************************************************/
     CompareMan inputStatus(){
         // INPUT Status(New, Modified, None)
         targetObject.each{ String key, def target ->
             def standard = standardObject[key]
             // Compare
             if(standard){
-                //status NONE
                 if(isEquals(target, standard)){
+                    /** NONE **/
                     target[statusFieldName] = statusNone
                     standard[statusFieldName] =  statusNone
                     if (closureNoneObject)
                         closureNoneObject(standard, target)
-                //status MODIFIED
                 }else{
+                    /** MODIFIED **/
                     target[statusFieldName] =  statusModified
                     standard[statusFieldName] = statusModified
                     if (closureModifiedObject)
                         closureModifiedObject(standard, target)
                 }
-            //status NEW
             }else{
+                /** NEW **/
                 target[statusFieldName] = statusNew
                 if (closureNewObject)
                     closureNewObject(standard, target)
@@ -114,12 +115,61 @@ class CompareMan {
 
         // INPUT Status(Removed)
         standardObject.findAll{ !it.value[statusFieldName] }.each{ String key, def standard ->
+            /** REMOVED **/
             standard[statusFieldName] = statusRemoved
             if (closureRemovedObject)
                 closureRemovedObject(standard)
         }
         return this
     }
+
+    /**************************************************
+     * EACH
+     **************************************************/
+    CompareMan each(Closure eachClosure){
+        targetObject.each{ String key, def target ->
+            def standard = standardObject[key]
+            // Compare
+            if(standard){
+                if(isEquals(target, standard)){
+                    /** NONE **/
+                    eachClosure(standard, target, statusNone)
+                    if (closureNoneObject)
+                        closureNoneObject(standard, target)
+                }else{
+                    /** MODIFIED **/
+                    eachClosure(standard, target, statusModified)
+                    if (closureModifiedObject)
+                        closureModifiedObject(standard, target)
+                }
+            }else{
+                /** NEW **/
+                eachClosure(standard, target, statusNew)
+                if (closureNewObject)
+                    closureNewObject(standard, target)
+
+            }
+        }
+
+        standardObject.findAll{ !targetObject[it.key] }.each{ String key, def standard ->
+            /** REMOVED **/
+            eachClosure(standard, null, statusRemoved)
+            if (closureRemovedObject)
+                closureRemovedObject(standard)
+        }
+        return this
+    }
+
+    class AnalisysResult{
+        List newList
+        List modifiedList
+        List noneList
+        List removedList
+    }
+
+
+
+
 
     Map getChangedMap(){
         Map removedMap = standardObject.findAll{ it.value[statusFieldName] == statusRemoved }
@@ -134,17 +184,36 @@ class CompareMan {
     }
 
     boolean isEquals(def standard, def target) {
-        boolean isOk = true
-        compareField.each{ String fieldName ->
-            if (standard[fieldName] != target[fieldName])
-                isOk = false
+        def standardValue
+        def targetValue
+        if (compareField){
+            return compareField.every{ String fieldName ->
+                if (fieldName.indexOf('.') != -1){
+                    standardValue = getFieldValue(standard, fieldName)
+                    targetValue = getFieldValue(target, fieldName)
+                }else{
+                    standardValue = standard[fieldName]
+                    targetValue = target[fieldName]
+                }
+                return (standardValue == target)
+            }
+        }else{
+            return (standard == target)
         }
-        return isOk
+    }
+
+    static def getFieldValue(def object, String fieldName){
+        String[] propertyParts = fieldName.split('[.]')
+        propertyParts.each{
+            object = object[it]
+        }
+        return object
     }
 
 
 
     /*************************
+     *
      * 비교하여 상태값 저장하기
      *
      *  - standardData = 특정 Bean 또는 List
@@ -177,15 +246,15 @@ class CompareMan {
                 .setStatusRemoved(ChangeStatusCode.REMOVED)
                 .eachNewObject{ Object standardData, Object targetData ->
                     /** [신규]시 **/
-                    logger.debug(" - NEW")
+                    logger.trace("compare - NEW")
                 }
                 .eachModifiedObject{ Object standardData, Object targetData ->
                     /** [수정]시 **/
-                    logger.debug(" - MOD")
+                    logger.trace("compare - MOD")
                 }
                 .eachRemovedObject{ Object standardData ->
                     /** [삭제]시 **/
-                    logger.debug(" - DEL")
+                    logger.trace("compare - DEL")
                 }
 
         //4. 동기화 설정 적용
@@ -196,12 +265,16 @@ class CompareMan {
     static Map<String, Object> toIdDataMap(Object object, List<String> keyFieldNameList){
         Map<String, Object> resultMap = [:]
         switch (object){
+            case null:
+                break
+
             case {object instanceof List}:
                 object.each{ Object item ->
-                    String key = keyFieldNameList.collect{ item[it] }.join('+')
+                    String key = keyFieldNameList.collect{ getFieldValue(item, it) }.join('+')
                     resultMap[key] = item
                 }
                 break
+
             default:
                 String key = keyFieldNameList.collect{ object[it] }.join('+')
                 resultMap[key] = object
@@ -209,5 +282,54 @@ class CompareMan {
         }
         return resultMap
     }
+
+    /*************************
+     *
+     * 비교 루프 돌기
+     *
+     *  - standardData = 특정 Bean 또는 List
+     *  - targetData = 특정 Bean 또는 List
+     *  - keyAttributenName = 아이디값을 갖고 있는 필드명
+     *  - statusAttributeName = 상태값을 넣을 필드명
+     *  - compareAttributeList = 비교할 필드명 List
+     *************************/
+    static void each(Object standardData, Object targetData, String keyAttributeName, List<String> compareAttributeList, Closure eachClosure){
+        each(standardData, targetData, [keyAttributeName], compareAttributeList, eachClosure)
+    }
+
+    static void each(Object standardData, Object targetData, List<String> keyAttributeNameList, List<String> compareAttributeList, Closure eachClosure){
+        Map<String, Object> standardDataMap = toIdDataMap(standardData, keyAttributeNameList)
+        Map<String, Object> targetDataMap = toIdDataMap(targetData, keyAttributeNameList)
+        each(standardDataMap, targetDataMap, compareAttributeList, eachClosure)
+    }
+
+    static void each(Map<String, Object> standardDataMap, Map<String, Object> targetDataMap, List<String> compareAttributeList, Closure eachClosure){
+        //3. 동기화 설정 (Meta:Target)
+        CompareMan compareMan = new CompareMan()
+                .setStandardObject(standardDataMap)
+                .setTargetObject(targetDataMap)
+                .setCompareField(compareAttributeList)
+//                .setStatusFieldName(statusAttributeName)
+                .setStatusNone(ChangeStatusCode.NONE)
+                .setStatusNew(ChangeStatusCode.NEW)
+                .setStatusModified(ChangeStatusCode.MODIFIED)
+                .setStatusRemoved(ChangeStatusCode.REMOVED)
+                .eachNewObject{ Object standardData, Object targetData ->
+                    /** [신규]시 **/
+                    logger.trace("each - NEW")
+                }
+                .eachModifiedObject{ Object standardData, Object targetData ->
+                    /** [수정]시 **/
+                    logger.trace("each - MOD")
+                }
+                .eachRemovedObject{ Object standardData ->
+                    /** [삭제]시 **/
+                    logger.trace("each - DEL")
+                }
+
+        //4. 동기화 설정 적용
+        compareMan.each(eachClosure)
+    }
+
 
 }
