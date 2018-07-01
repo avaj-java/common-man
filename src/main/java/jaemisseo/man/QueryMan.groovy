@@ -25,7 +25,7 @@ import java.sql.Connection
 class QueryMan {
 
     //Logger
-    private Logger logger = LoggerFactory.getLogger(this.getClass());
+    private static Logger logger = LoggerFactory.getLogger(this.getClass());
 
     //Package
     private String packagePath = getClass().getName()
@@ -70,12 +70,15 @@ class QueryMan {
     Class resultType
     String resultId
 
-    Integer pageNum
-    Integer pageSize
+    Long pageNum
+    Long pageSize
 
     boolean modeCloseAfter
     boolean modeMeta
-    boolean modeCount
+    boolean modeCountAsInteger
+    boolean modeCountAsLong
+    boolean modeMax
+    boolean modeMin
     boolean modeToJavaType
     boolean modeTopRank
     boolean modeAutoCreateTable
@@ -254,7 +257,10 @@ class QueryMan {
 
         modeCloseAfter = false
         modeMeta = false
-        modeCount = false
+        modeCountAsInteger = false
+        modeCountAsLong = false
+        modeMax = false
+        modeMax = false
         modeToJavaType = false
         modeTopRank = false
         modeAutoCreateTable = false
@@ -451,6 +457,11 @@ class QueryMan {
         return this
     }
 
+    QueryMan setModeAutoCreateTable(boolean modeAutoCreateTable){
+        this.modeAutoCreateTable = modeAutoCreateTable
+        return this
+    }
+
     QueryMan setModeAutoClose(boolean modeAutoClose){
         this.modeAutoClose = modeAutoClose
         return this
@@ -470,8 +481,27 @@ class QueryMan {
         return this
     }
 
-    QueryMan setModeCount(boolean modeCount){
-        this.modeCount = modeCount
+    QueryMan setModeCountAsInteger(boolean modeCount){
+        this.modeCountAsInteger = modeCount
+        this.modeCountAsLong = !modeCount
+        return this
+    }
+
+    QueryMan setModeCountAsLong(boolean modeCount){
+        this.modeCountAsLong = modeCount
+        this.modeCountAsInteger = !modeCount
+        return this
+    }
+
+    QueryMan setModeMax(boolean modeMax){
+        this.modeMax = modeMax
+        this.modeMin = !modeMax
+        return this
+    }
+
+    QueryMan setModeMin(boolean modeMin){
+        this.modeMax = !modeMin
+        this.modeMin = modeMin
         return this
     }
 
@@ -491,20 +521,38 @@ class QueryMan {
 
 
     QueryMan setPage(Integer pageNum){
-        this.pageNum = pageNum
+        this.pageNum = pageNum as Long
+        return this
+    }
+
+    QueryMan setPage(Long pageNum){
+        this.pageNum = pageNum as Long
         return this
     }
 
     QueryMan setPage(Integer pageNum, Integer pageSize){
+        this.pageNum = pageNum as Long
+        this.pageSize = pageSize as Long
+        return this
+    }
+
+    QueryMan setPage(Long pageNum, Long pageSize){
         this.pageNum = pageNum
         this.pageSize = pageSize
         return this
     }
 
     QueryMan setPageSize(Integer pageSize){
+        this.pageSize = pageSize as Long
+        return this
+    }
+
+    QueryMan setPageSize(Long pageSize){
         this.pageSize = pageSize
         return this
     }
+
+
 
     QueryMan setJoin(Class clazzToJoin){
         this.clazzListToJoin = [clazzToJoin]
@@ -598,12 +646,26 @@ class QueryMan {
         return setCommand('select').rows(param, closure, [:])
     }
 
-    /** SELECT COUNT INTEGER **/
+    /** SELECT COUNT**/
     Integer selectCount(){
-        return selectCount([])
+        return selectCountAsInteger()
     }
     Integer selectCount(def param){
-        return setModeCount(true).setCommand('select').rows(param, null, null)
+        return selectCountAsInteger(param)
+    }
+
+    Integer selectCountAsInteger(){
+        return selectCountAsInteger([])
+    }
+    Integer selectCountAsInteger(def param){
+        return setModeCountAsInteger(true).setCommand('select').rows(param, null, null)
+    }
+
+    Long selectCountAsLong(){
+        return selectCountAsLong([])
+    }
+    Long selectCountAsLong(def param){
+        return setModeCountAsLong(true).setCommand('select').rows(param, null, null)
     }
 
     /** SELECT STRING **/
@@ -640,6 +702,72 @@ class QueryMan {
         if (!resultType && !param && query)
             setResultType(Integer)
         return setCommand('select').rows(param, null, new Integer(0))
+    }
+
+    /** SELECT LONG **/
+    Long selectLong(){
+        return selectLong([])
+    }
+    Long selectLong(String resultId){
+        setResultId(resultId)
+        return selectLong()
+    }
+    Long selectLong(def param, String resultId){
+        setResultId(resultId)
+        return selectLong(param)
+    }
+    Long selectLong(def param){
+        if (!resultType && !param && query)
+            setResultType(Long)
+        return setCommand('select').rows(param, null, new Long(0))
+    }
+
+    /** SELECT MAX **/
+    Object selectMax(){
+        return selectMax([])
+    }
+    Object selectMax(String resultId){
+        setResultId(resultId)
+        return selectMax()
+    }
+    Object selectMax(def param){
+        return selectMax(param, getSelectDtoClosure())
+    }
+    Object selectMax(def param, String resultId){
+        setResultId(resultId)
+        return selectMax(param, getSelectDtoClosure())
+    }
+    Object selectMax(Closure closure){
+        return selectMax([], closure)
+    }
+    Object selectMax(def param, Closure closure){
+        if (!resultType && !param && query)
+            setResultType(Object)
+        return setModeMax(true).setCommand('select').rows(param, closure, new Object())
+    }
+
+    /** SELECT MIN **/
+    Object selectMin(){
+        return selectMin([])
+    }
+    Object selectMin(String resultId){
+        setResultId(resultId)
+        return selectMin()
+    }
+    Object selectMin(def param){
+        return selectMin(param, getSelectDtoClosure())
+    }
+    Object selectMin(def param, String resultId){
+        setResultId(resultId)
+        return selectMin(param, getSelectDtoClosure())
+    }
+    Object selectMin(Closure closure){
+        return selectMin([], closure)
+    }
+    Object selectMin(def param, Closure closure){
+        if (!resultType && !param && query)
+            setResultType(Object)
+        return setModeMin(true).setCommand('select').rows(param, closure, new Object())
     }
 
     /** SELECT META LIST **/
@@ -847,8 +975,12 @@ class QueryMan {
             query = generateOrderQuery(query)
         if (pageNum && pageSize)
             query = generatePageinateQuery(query)
-        if (modeCount)
+        if (modeCountAsInteger || modeCountAsLong)
             query = generateCountQuery(query)
+        if (modeMax)
+            query = generateMaxQuery(query, resultId)
+        if (modeMin)
+            query = generateMinQuery(query, resultId)
 
         values = (param) ? generateValues(param) : []
 
@@ -864,11 +996,30 @@ class QueryMan {
                     }
                 })
 
-            /** SELECT COUNT INTEGER **/
-            }else if (modeCount){
+            /** SELECT COUNT as INTEGER **/
+            }else if (modeCountAsInteger){
                 sql.rows(query, values).each{
                     result = it['CNT'] as Integer
                 }
+
+            /** SELECT COUNT as LONG **/
+            }else if (modeCountAsLong){
+                sql.rows(query, values).each{
+                    result = it['CNT'] as Long
+                }
+
+            /** SELECT MAX **/
+            }else if (modeMax){
+                sql.rows(query, values).each{
+                    result = it['MAX_VALUE']
+                }
+
+            /** SELECT MIN **/
+            }else if (modeMin){
+                sql.rows(query, values).each{
+                    result = it['MIN_VALUE']
+                }
+
             }else{
 
                 /** SELECT MAP **/
@@ -911,6 +1062,13 @@ class QueryMan {
                     String idColumnName = resultMap[resultId] ?: resultId
                     if (row)
                         result = (idColumnName) ? (Integer)row[idColumnName] : (Integer)row[0]
+
+                /** SELECT LONG **/
+                }else if (result instanceof Long){
+                    GroovyRowResult row = sql.firstRow(query, values)
+                    String idColumnName = resultMap[resultId] ?: resultId
+                    if (row)
+                        result = (idColumnName) ? (Long)row[idColumnName] : (Long)row[0]
                 }
             }
 
@@ -1075,8 +1233,15 @@ class QueryMan {
 
         if (!command.equals('select')){
             attribute.each{ String propNm ->
-                if (!replaceMap[propNm])
-                    values << param[propNm]
+                if (!replaceMap[propNm]){
+                    Field field = param.getClass().getDeclaredField(propNm)
+                    if ([String.class, Date.class, Integer.class, Long.class, Short.class, Double.class].contains(field.type))
+                        values << param[propNm]
+                    else if ([Boolean.class].contains(field.type))
+                        values << param[propNm] ? 1: 0
+                    else
+                        values << param[propNm]?.toString()
+                }
             }
         }
 
@@ -1419,10 +1584,10 @@ class QueryMan {
         resultType.getDeclaredFields().each{ Field field ->
             QueryColumn annotation = field.getAnnotation(QueryColumn.class);
             if( annotation ){
-                if (field.type == String.class || field.type == Date.class  || field.type == Integer.class){
+//                if (field.type == String.class || field.type == Date.class  || field.type == Integer.class){
                     field.accessible = true
                     machingMap[field.name] = annotation.value()
-                }
+//                }
             }
         }
         return machingMap
@@ -1445,10 +1610,10 @@ class QueryMan {
         resultType.getDeclaredFields().each{ Field field ->
             QueryColumnSetup annotation = field.getAnnotation(QueryColumnSetup.class);
             if( annotation ){
-                if (field.type == String.class || field.type == Date.class  || field.type == Integer.class){
+//                if (field.type == String.class || field.type == Date.class  || field.type == Integer.class){
                     field.accessible = true
                     columnSetupMap[field.name] = annotation
-                }
+//                }
             }
         }
         return columnSetupMap
@@ -1458,16 +1623,16 @@ class QueryMan {
     void setPageValue(def instance) throws IllegalAccessException {
         instance.getClass().getDeclaredFields().each{ Field field ->
             if( field.getAnnotation(QueryPageSize.class) ){
-                if (field.type == String.class || field.type == Date.class  || field.type == Integer.class){
+//                if (field.type == String.class || field.type == Date.class  || field.type == Integer.class || field.type == Long.class){
                     field.accessible = true
-                    pageSize = (instance[field.name] as Integer)
-                }
+                    pageSize = (instance[field.name] as Long)
+//                }
             }
             if( field.getAnnotation(QueryPageNumber.class) ){
-                if (field.type == String.class || field.type == Date.class  || field.type == Integer.class){
+//                if (field.type == String.class || field.type == Date.class  || field.type == Integer.class || field.type == Long.class){
                     field.accessible = true
-                    pageNum = (instance[field.name] as Integer)
-                }
+                    pageNum = (instance[field.name] as Long)
+//                }
             }
         }
     }
@@ -1506,8 +1671,8 @@ class QueryMan {
     }
 
     String generatePageinateQuery(String query){
-        Integer pageStartNum = (pageNum -1) * pageSize
-        Integer pageEndNum = pageNum * pageSize
+        Long pageStartNum = (pageNum -1) * pageSize
+        Long pageEndNum = pageNum * pageSize
         return """
             SELECT * 
             FROM ( 
@@ -1523,6 +1688,24 @@ class QueryMan {
     String generateCountQuery(query){
         return """
              SELECT COUNT(*) AS CNT
+             FROM (
+                ${query}
+             ) """
+    }
+
+    String generateMaxQuery(String query, String keyAttribute){
+        String keyColumnName = resultMap[keyAttribute] ?: keyAttribute
+        return """
+             SELECT MAX(${keyColumnName}) AS MAX_VALUE
+             FROM (
+                ${query}
+             ) """
+    }
+
+    String generateMinQuery(String query, String keyAttribute){
+        String keyColumnName = resultMap[keyAttribute] ?: keyAttribute
+        return """
+             SELECT MIN(${keyColumnName}) AS MIN_VALUE
              FROM (
                 ${query}
              ) """
@@ -1589,9 +1772,12 @@ class QueryMan {
 
         }else if (clazz == Integer.class){
             return "NUMBER"
+
+        }else if (clazz == Boolean.class){
+            return "NUMBER"
         }
 
-        return "VARCHAR2"
+        return "VARCHAR2(100)"
     }
 
 
@@ -1660,17 +1846,17 @@ class QueryMan {
         //Making Log - Query
         if (query){
             if (modeFlattenQueryLog)
-                query = query.replaceAll("\n+", " ").replaceAll("\r+", " ").replaceAll("\t+", " ").replaceAll("\\s+", " ")
+                query = toFlattenQuery(query)
             queryLog = "==>  Preparing: ${query}"
         }
         //Making Log - Parameter
         if (params){
-            paramLog = "==> Parameters: ${params.toString()}\n"
+            paramLog = "==> Parameters: ${params.toString()}"
         }
         //Making Log - Result
-        if (result){
+//        if (result){
             resultLog = (result instanceof List || result instanceof Map) ? "<==       Size: ${result.size()}" : "<==     Result: ${result}"
-        }
+//        }
         log('QueryMan', [queryLog, paramLog, resultLog])
     }
 
@@ -1682,11 +1868,11 @@ class QueryMan {
         if (query){
             if (modeFlattenQueryLog)
                 query = query.replaceAll("\n+", " ").replaceAll("\r+", " ").replaceAll("\t+", " ").replaceAll("\\s+", " ")
-            queryLog = "==>  Preparing: ${query}\n"
+            queryLog = "==>  Preparing: ${query}"
         }
         //Making Log - Parameter
         if (params){
-            paramLog = "==> Parameters: ${params.toString()}\n"
+            paramLog = "==> Parameters: ${params.toString()}"
         }
         //Making Log - Result
         if (result){
@@ -1716,6 +1902,175 @@ class QueryMan {
             result = strBuffer.toString()
         }
         return result
+    }
+
+
+
+
+    /*************************
+     * Convert every spacing to one space
+     *  - Enter
+     *  - Many space
+     *  - Tab
+     *************************/
+    static String toFlattenQuery(String query){
+        return query.replaceAll("\n+", " ").replaceAll("\r+", " ").replaceAll("\t+", " ").replaceAll("\\s+", " ")
+    }
+
+
+
+    /*************************
+     * Each data (Divide the segment and select the data from DataBase.)
+     *  - It can't stop
+     *************************/
+    static boolean eachRowWithIndex(Connection conn, String query, Long startPageNumber, Long batchSize, Closure closure){
+        Long allDataCount = new QueryMan(conn).setModeAutoClose(false).setQuery(query).selectCountAsLong()
+        return eachRowWithIndex(conn, query, startPageNumber, batchSize, allDataCount, closure)
+        return true
+    }
+
+    static boolean eachRowWithIndex(Connection conn, String query, Long startPageNumber, Long batchSize, Closure closure, Closure eachBatchSizeClosure){
+        Long allDataCount = new QueryMan(conn).setModeAutoClose(false).setQuery(query).selectCountAsLong()
+        return eachRowWithIndex(conn, query, startPageNumber, batchSize, allDataCount, closure, eachBatchSizeClosure)
+        return true
+    }
+
+    static boolean eachRowWithIndex(Connection conn, String query, Long startPageNumber, Long batchSize, Long allDataCount, Closure closure){
+        return eachRowWithIndex(conn, query, startPageNumber, batchSize, allDataCount, closure, null)
+    }
+
+    static boolean eachRowWithIndex(Connection conn, String query, Long startPageNumber, Long batchSize, Long allDataCount, Closure closure, Closure eachBatchSizeClosure){
+        List<Map> resultList
+        Long pageNumber = startPageNumber ?: 0
+        Long itemIndex = 0
+        batchSize = batchSize ?: 10000
+        int maxPageNumber = Math.ceil(allDataCount / batchSize)
+
+        logger.debug "${allDataCount} rows will be selected ${maxPageNumber} times in ${batchSize} rows."
+        try{
+            while (++pageNumber <= maxPageNumber){
+                Long startDataNumber = (pageNumber - 1) * batchSize + 1
+                Long endDataNumber =  (pageNumber * batchSize)
+                endDataNumber = (endDataNumber < allDataCount) ? endDataNumber : allDataCount
+
+                //- Select as much as batch size
+                logger.debug "=============== Check... Range: ${(startDataNumber)} ~ ${endDataNumber} / ${allDataCount}"
+                resultList = nextData(conn, query, pageNumber, batchSize)
+                resultList.each{ def item ->
+                    closure(item, ++itemIndex, pageNumber)
+                }
+
+                //- Each batch size closure
+                if (eachBatchSizeClosure)
+                    eachBatchSizeClosure(endDataNumber, pageNumber)
+                logger.debug "=============== Check Done."
+            }
+
+        }catch(e){
+            e.printStackTrace()
+            throw e
+        }finally{
+        }
+        return true
+    }
+
+
+
+    /*************************
+     * Every data (Divide the segment and select the data from DataBase.)
+     *  - return true => Keep going
+     *  - return false => Stop loop.
+     *************************/
+    static boolean everyRowWithIndex(Connection conn, String query, Long startPageNumber, Long batchSize, Closure closure){
+        Long allDataCount = new QueryMan(conn).setModeAutoClose(false).setQuery(query).selectCountAsLong()
+        return everyRowWithIndex(conn, query, startPageNumber, batchSize, allDataCount, closure)
+        return true
+    }
+
+    static boolean everyRowWithIndex(Connection conn, String query, Long startPageNumber, Long batchSize, Closure closure, Closure eachBatchSizeClosure){
+        Long allDataCount = new QueryMan(conn).setModeAutoClose(false).setQuery(query).selectCountAsLong()
+        return everyRowWithIndex(conn, query, startPageNumber, batchSize, allDataCount, closure, eachBatchSizeClosure)
+        return true
+    }
+
+    static boolean everyRowWithIndex(Connection conn, String query, Long startPageNumber, Long batchSize, Long allDataCount, Closure closure){
+        return everyRowWithIndex(conn, query, startPageNumber, batchSize, allDataCount, closure, null)
+    }
+
+    static boolean everyRowWithIndex(Connection conn, String query, Long startPageNumber, Long batchSize, Long allDataCount, Closure closure, Closure eachBatchSizeClosure){
+        boolean okEvery = false
+        List<Map> resultList
+        Long pageNumber = startPageNumber ?: 0
+        Long itemIndex = 0
+        batchSize = batchSize ?: 10000
+        int maxPageNumber = Math.ceil(allDataCount / batchSize)
+
+        logger.debug "${allDataCount} rows will be selected ${maxPageNumber} times in ${batchSize} rows."
+        try{
+            while (++pageNumber <= maxPageNumber){
+                Long startDataNumber = (pageNumber - 1) * batchSize + 1
+                Long endDataNumber =  (pageNumber * batchSize)
+                endDataNumber = (endDataNumber < allDataCount) ? endDataNumber : allDataCount
+
+                //- Select as much as batch size
+                logger.debug "=============== Check... Range: ${(startDataNumber)} ~ ${endDataNumber} / ${allDataCount}"
+                resultList = nextData(conn, query, pageNumber, batchSize)
+                okEvery = resultList.every{ def item ->
+                    return closure(item, ++itemIndex, pageNumber)
+                }
+
+                //- Each batch size closure
+                if (eachBatchSizeClosure)
+                    eachBatchSizeClosure(itemIndex, pageNumber)
+                logger.debug "=============== Check Done."
+
+                if (!okEvery)
+                    break
+            }
+
+        }catch(e){
+            e.printStackTrace()
+            throw e
+        }finally{
+        }
+        return okEvery
+    }
+
+
+
+    static List<Map> nextData(Connection conn, String query, Long pageNumber, Long pageSize){
+        List<Map> resultList = new QueryMan(conn).setModeAutoClose(false).setQuery(query).setPage(pageNumber).setPageSize(pageSize).selectList()
+        return resultList
+    }
+
+
+    /*************************
+     *
+     *  Generate Connection
+     *
+     *************************/
+    static Connection generateConnection(String url, String driver, String user, String password){
+        return generateConnection([
+                url: url,
+                driver: driver,
+                user: user,
+                password: password,
+        ])
+    }
+
+    static Connection generateConnection(String vendor, String ip, String port, String dbName, String user, String password){
+        return generateConnection([
+                vendor: vendor,
+                ip: ip,
+                port : port,
+                db: dbName,
+                user: user,
+                password: password,
+        ])
+    }
+
+    static Connection generateConnection(Map<String, String> connectionInfoMap){
+        return ConnectionGenerator.generateByMap(connectionInfoMap)
     }
 
 }
