@@ -25,12 +25,12 @@ class VariableMan {
         init()
     }
 
-    VariableMan(Map<String, String> variableStringMapToPut){
+    VariableMan(Map<String, Object> variableStringMapToPut){
         putVariables(variableStringMapToPut)
         init()
     }
 
-    VariableMan(Map<String, String> variableStringMapToPut, Map<String, Closure> funcMapToPut){
+    VariableMan(Map<String, Object> variableStringMapToPut, Map<String, Closure> funcMapToPut){
         putVariables(variableStringMapToPut)
         putFuncs(funcMapToPut)
         init()
@@ -41,7 +41,7 @@ class VariableMan {
         init()
     }
 
-    VariableMan(String charset, Map<String, String> variableStringMapToPut){
+    VariableMan(String charset, Map<String, Object> variableStringMapToPut){
         this.charset = charset
         putVariables(variableStringMapToPut)
         init()
@@ -111,8 +111,9 @@ class VariableMan {
     Map<String, String> variableStringMap = [:]
     Map<String, Closure> variableClosureMap = [:]
     Map<String, Closure> FuncMap = [:]
-    boolean modeDebug
-    boolean modeExistCodeOnly
+    boolean modeDebug = false
+    boolean modeMustExistCodeRule = true
+    boolean modeExistCodeOnly = false
     boolean modeExistFunctionOnly = true
     String charset
 
@@ -128,6 +129,11 @@ class VariableMan {
      */
     VariableMan setModeDebug(boolean modeDebug){
         this.modeDebug = modeDebug
+        return this
+    }
+
+    VariableMan setModeMustExistCodeRule(boolean modeMustExistCodeRule){
+        this.modeMustExistCodeRule = modeMustExistCodeRule
         return this
     }
 
@@ -194,15 +200,45 @@ class VariableMan {
      * @param variableStringMapToAdd
      * @return
      */
-    VariableMan putVariables(Map<String, String> variableStringMapToPut){
-        if (variableStringMapToPut)
+    VariableMan putVariables(Map<String, Object> variableStringMapToPut){
+        if (variableStringMapToPut){
+            if (variableStringMapToPut.values().findAll{ it instanceof Map }){
+                logger.debug('Add Variable (from MultiDepth Map)')
+                variableStringMapToPut = toPropertiesMap(variableStringMapToPut)
+            }else{
+                logger.debug('Add Variable (from SingleDepth Map)')
+            }
+            if (logger.isTraceEnabled()){
+                variableStringMapToPut.each{
+                    logger.trace("[${it.key}] ${it.value}")
+                }
+            }
             this.variableStringMap.putAll(variableStringMapToPut)
+        }
         return this
     }
 
+    static Map<String, String> toPropertiesMap(Map parameters){
+        Map<String, List<String>> concatKeyStringValueMap = [:]
+        return toPropertiesMap(parameters, '', concatKeyStringValueMap)
+    }
+
+    static Map<String, String> toPropertiesMap(Map parameters, String prevKey, Map<String, String> concatKeyStringValueMap){
+        parameters.keySet().each{ String key ->
+            String concatKey = (prevKey) ? prevKey + '.' + key : key
+            def value = parameters[key]
+            if (value instanceof Map)
+                toPropertiesMap(value, concatKey, concatKeyStringValueMap)
+            else{
+                concatKeyStringValueMap[concatKey] = value
+            }
+        }
+        return concatKeyStringValueMap
+    }
+
     /**
-     * You Can Put Variable
-     *  [ VariableName(String) : VariableValue(String) ]
+     * You Can Delete Variable
+     *  [ VariableName(String), VariableName(String) ]
      *  Please Do Not Set These Names => 'date', 'random'
      * @param variableStringMapToAdd
      * @return
@@ -258,8 +294,16 @@ class VariableMan {
      * @return
      * @throws java.lang.Exception
      */
-    String parse(String codeRule) throws Exception{
-        return parse(codeRule, this.variableStringMap)
+    Object parse(Object codeRule) throws Exception{
+        parse(codeRule, this.variableStringMap)
+    }
+
+    String parseString(String codeRule) throws Exception{
+        return parseString(codeRule, this.variableStringMap)
+    }
+
+    Object parseObject(Object codeRule) throws Exception{
+        return parseObject(codeRule, this.variableStringMap)
     }
 
     /**
@@ -269,7 +313,18 @@ class VariableMan {
      * @return
      * @throws java.lang.Exception
      */
-    String parse(String codeRule, Map<String, String> variableStringMap) throws Exception{
+    Object parse(Object codeRule, Map<String, String> variableStringMap) throws Exception{
+        switch(codeRule){
+            case {codeRule instanceof String}:
+                return parseString(codeRule, variableStringMap)
+                break
+            default:
+                return parseObject(codeRule, variableStringMap)
+                break
+        }
+    }
+
+    String parseString(String codeRule, Map<String, String> variableStringMap) throws Exception{
         List<OnePartObject> partObjectList = parsedDataList(codeRule, variableStringMap)
         int allCharLength = 0
         int allByteLength = 0
@@ -303,6 +358,36 @@ class VariableMan {
         }
         return parsedPartStringList.join('')
     }
+
+    Object parseObject(Object codeRule, Map<String, String> variableStringMap) throws Exception{
+        switch (codeRule){
+            case {codeRule instanceof Map}:
+                codeRule.each{ key, item ->
+                    if (item instanceof String)
+                        codeRule[key] = parseString(item, variableStringMap)
+                    else
+                        parseObject(item, variableStringMap)
+                }
+                break
+
+            case {codeRule instanceof List}:
+                codeRule.eachWithIndex{ item, i ->
+                    if (item instanceof String)
+                        codeRule[i] = parseString(item, variableStringMap)
+                    else
+                        parseObject(item, variableStringMap)
+                }
+                break
+
+            case {codeRule instanceof String}:
+                return parseString(codeRule, variableStringMap)
+                break
+        }
+    }
+
+
+
+
 
     List<OnePartObject> parsedDataList(String codeRule){
         return parsedDataList(codeRule, this.variableStringMap)
@@ -471,7 +556,7 @@ class VariableMan {
      */
     boolean validateCodeRule(String codeRule) throws Exception{
         /* DEVELOPER COMMENT: "It does not matter." */
-        if (codeRule == null)
+        if (modeMustExistCodeRule && codeRule == null)
             throw new NullPointerException()
 //        if (!codeRule || !codeRule.trim())
 //            throw new Exception( ErrorMessage.VAR1.msg + "[${codeRule}]" )

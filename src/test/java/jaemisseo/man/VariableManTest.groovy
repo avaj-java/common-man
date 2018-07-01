@@ -1,5 +1,6 @@
 package jaemisseo.man
 
+import org.junit.Before
 import org.junit.Test
 
 /**
@@ -15,12 +16,12 @@ class VariableManTest {
     String codeRuleH2 = '${biz}${class}${seq(3).left(0).error(over)}'
     String codeRuleS = '${biz(4).right(0)}${class(1)}${seq(4).left(0).error(over)}'
 
+    VariableMan varman
 
-    @Test
-    void parse() {
-
-        //VariableMan 생성
-        VariableMan varman = new VariableMan('EUC-KR', [
+    @Before
+    void beforeTest(){
+        // VariableMan 생성
+        varman = new VariableMan('EUC-KR', [
                 noContent                    : "",
                 nullContent                  : null,
                 USERNAME                     : "하이하이하이",
@@ -32,8 +33,27 @@ class VariableManTest {
                 num                          : '010-9911-0321',
                 'installer.level.1.file.path': '/foo/bar',
                 'nvl.test'                   : '',
+                'foo.bar': "i am maybe foo.bar",
+                'foo': [
+                        bar: "i am foo.bar",
+                        var: "i am foo.var",
+                ],
+                'foofoo': [
+                        barbar: [
+                                varvar: [
+                                        end: "i am foofoo.barbar.varvar.end"
+                                ],
+                                var: "i am foofoo.barbar.var",
+                        ],
+                        bar: "i am foofoo.bar"
+                ],
+                search: "HELLO SEARCH !!!"
         ])
 //        .setModeDebug(true)
+    }
+
+    @Test
+    void "간단 테스트"() {
 
         // Test empty string
         assert varman.parse('') == ""
@@ -87,9 +107,76 @@ class VariableManTest {
         // Test - parseDefaultVariableOnly
         String tempCode = '${USERNAME} ${notExistsVariable} [${date(yyyyMMddHHmmssSSS)}${random(5)}]'
         println varman.setModeExistCodeOnly(true).parse(tempCode)
+
+        assert varman.setModeExistCodeOnly(true).parse(tempCode).startsWith('하이하이하이 ${notExistsVariable} [')
         println varman.setModeExistCodeOnly(false).parse(tempCode)
+
+        assert varman.setModeExistCodeOnly(false).parse(tempCode).startsWith('하이하이하이  [')
         println varman.setModeExistCodeOnly(true).parseDefaultVariableOnly(tempCode)
+        assert varman.setModeExistCodeOnly(true).parseDefaultVariableOnly(tempCode).startsWith('${USERNAME} ${notExistsVariable} [')
+
         println varman.setModeExistCodeOnly(false).parseDefaultVariableOnly(tempCode)
+        assert varman.setModeExistCodeOnly(false).parseDefaultVariableOnly(tempCode).startsWith('${USERNAME} ${notExistsVariable} [')
+    }
+
+    @Test
+    void "Properties 스타일 Variable로 변환"(){
+        // Exist Variable
+        assert "Hello, i am foo.bar" == varman.parse('Hello, ${foo.bar}')
+        assert "Hello, i am foo.var" == varman.parse('Hello, ${foo.var}')
+        assert "Hello, i am foofoo.bar" == varman.parse('Hello, ${foofoo.bar}')
+        assert "Hello, i am foofoo.barbar.var" == varman.parse('Hello, ${foofoo.barbar.var}')
+        assert "Hello, i am foofoo.barbar.varvar.end" == varman.parse('Hello, ${foofoo.barbar.varvar.end}')
+
+        // No Exist Variable
+        assert "Hello, " == varman.parse('Hello, ${foo.no.bar}')
+    }
+
+    @Test
+    void "Object타입의 CodeRule을 Parsing하기"(){
+        def machingParameter = [
+                catalog: [
+                        dataBaseName: true,
+                        schemaName: true,
+                        tableName: true
+                ],
+                managerList: [
+                        [
+                                name: '*${search}*',
+                                id: '*${search}*'
+                        ]
+                ]
+        ]
+
+        // Exist Variable
+        def parsedObject = varman.parse(machingParameter)
+        assert parsedObject.managerList.size() == parsedObject.managerList.findAll{ it.name.equals '*HELLO SEARCH !!!*' }.size()
+        assert parsedObject.managerList.size() == parsedObject.managerList.findAll{ it.id.equals '*HELLO SEARCH !!!*' }.size()
+    }
+
+
+
+    @Test
+    void "분석 데이터 테스트"() {
+        String codeRule = '${USERNAME} ${notExistsVariable} [${date(yyyyMMddHHmmssSSS)}${random(5)}]'
+        List<VariableMan.OnePartObject> list = new VariableMan().parsedDataList(codeRule, [
+                noContent                    : "",
+                nullContent                  : null,
+                USERNAME                     : "하이하이하이",
+                lowerChar                    : "hi everybody",
+                upperChar                    : "HI EVERYBODY",
+                syntaxTest                   : 'HI ${}EVERYBODY${}',
+                s                            : '하하하\\n하하하',
+                s2                           : 'ㅋㅋㅋ\nㅋㅋl',
+                num                          : '010-9911-0321',
+                'installer.level.1.file.path': '/foo/bar',
+        ])
+        println list
+        println codeRule
+        println codeRule.size()
+        println list.collect{ return it.partValue }.join('')
+        println list.collect{ return it.partValue }.join('').size()
+        assert codeRule == list.collect{ return it.partValue }.join('')
     }
 
     @Test
@@ -137,14 +224,13 @@ class VariableManTest {
         assert list[0].getMember('nonefunc', 0) == 'dddd'
     }
 
-
     @Test
     void signChange(){
-         VariableMan varman = new VariableMan([
-                 'a1': 'a',
-                 'a2': 'aa',
-                 'a3': 'aaa',
-         ])
+        VariableMan varman = new VariableMan([
+                'a1': 'a',
+                'a2': 'aa',
+                'a3': 'aaa',
+        ])
         varman.setVariableSign('#')
         assert varman.parse('${a1} ${a2} ${a3}') == '${a1} ${a2} ${a3}'
         assert varman.parse('#{a1} #{a2} #{a3}') == 'a aa aaa'
