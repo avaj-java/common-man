@@ -1,6 +1,7 @@
 package jaemisseo.man
 
 import jaemisseo.man.code.ChangeStatusCode
+import jaemisseo.man.util.Util
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -117,6 +118,35 @@ class CompareMan {
         standardObject.findAll{ !it.value[statusFieldName] }.each{ String key, def standard ->
             /** REMOVED **/
             standard[statusFieldName] = statusRemoved
+            if (closureRemovedObject)
+                closureRemovedObject(standard)
+        }
+        return this
+    }
+
+    /**************************************************
+     * EACH Simple List
+     **************************************************/
+    CompareMan eachSimpleList(Closure eachClosure){
+        (targetObject as List).each{ String target ->
+            def hasStandardData = standardObject.contains(target)
+            // Compare
+            if(hasStandardData){
+                /** NONE **/
+                eachClosure(target, statusNone)
+                if (closureNoneObject)
+                    closureNoneObject(target)
+            }else{
+                /** NEW **/
+                eachClosure(target, statusNew)
+                if (closureNewObject)
+                    closureNewObject(target)
+            }
+        }
+
+        (standardObject as List).findAll{ !targetObject.contains(it) }.each{ def standard ->
+            /** REMOVED **/
+            eachClosure(standard, statusRemoved)
             if (closureRemovedObject)
                 closureRemovedObject(standard)
         }
@@ -293,6 +323,42 @@ class CompareMan {
      *  - statusAttributeName = 상태값을 넣을 필드명
      *  - compareAttributeList = 비교할 필드명 List
      *************************/
+    static void each(Object standardData, Object targetData, Closure eachClosure){
+        if (standardData instanceof List && targetData instanceof List){
+            eachSimpleList(standardData, targetData, eachClosure)
+        }
+    }
+
+    static void eachSimpleList(List standardDataList, List targetDataLIst, Closure eachClosure){
+        //3. 동기화 설정 (Meta:Target)
+        CompareMan compareMan = new CompareMan()
+                .setStandardObject(standardDataList)
+                .setTargetObject(targetDataLIst)
+//                .setCompareField(compareAttributeList)
+//                .setStatusFieldName(statusAttributeName)
+                .setStatusNone(ChangeStatusCode.NONE)
+                .setStatusNew(ChangeStatusCode.NEW)
+                .setStatusModified(ChangeStatusCode.MODIFIED)
+                .setStatusRemoved(ChangeStatusCode.REMOVED)
+                .eachNewObject{ Object targetData ->
+                    /** [신규]시 **/
+                    logger.trace("each - NEW")
+                }
+                .eachModifiedObject{ Object targetData ->
+                    /** [수정]시 **/
+                    logger.trace("each - MOD")
+                }
+                .eachRemovedObject{ Object standardData ->
+                    /** [삭제]시 **/
+                    logger.trace("each - DEL")
+                }
+
+        //4. 동기화 설정 적용
+        compareMan.eachSimpleList(eachClosure)
+    }
+
+
+
     static void each(Object standardData, Object targetData, String keyAttributeName, List<String> compareAttributeList, Closure eachClosure){
         each(standardData, targetData, [keyAttributeName], compareAttributeList, eachClosure)
     }
@@ -331,5 +397,23 @@ class CompareMan {
         compareMan.each(eachClosure)
     }
 
+
+    static void eachWIthProgressBar(Object standardData, Object targetData, Closure eachClosure){
+        if (standardData instanceof List && targetData instanceof List){
+            List dataList = (standardData + targetData).unique{ String entry -> entry }
+            int totalSize = dataList.size()
+            int barSize = 20
+            int count = 0
+
+            /** WithProgressBar **/
+            Map progressBarData = Util.startPrinter(totalSize, barSize, true)
+            eachSimpleList(standardData, targetData){ compareData, ChangeStatusCode changeStatusCode ->
+                progressBarData.count++
+                progressBarData.item = compareData
+                eachClosure(progressBarData, changeStatusCode)
+            }
+            Util.endWorker(progressBarData)
+        }
+    }
 
 }
