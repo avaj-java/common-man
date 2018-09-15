@@ -203,16 +203,17 @@ class VariableMan {
     VariableMan putVariables(Map<String, Object> variableStringMapToPut){
         if (variableStringMapToPut){
             if (variableStringMapToPut.values().findAll{ it instanceof Map }){
-                logger.debug('Add Variable (from MultiDepth Map)')
+                logger.trace('Add Variable (from MultiDepth Map)')
                 variableStringMapToPut = toPropertiesMap(variableStringMapToPut)
             }else{
-                logger.debug('Add Variable (from SingleDepth Map)')
+                logger.trace('Add Variable (from SingleDepth Map)')
             }
             if (logger.isTraceEnabled()){
                 variableStringMapToPut.each{
                     logger.trace("[${it.key}] ${it.value}")
                 }
             }
+            //Put
             this.variableStringMap.putAll(variableStringMapToPut)
         }
         return this
