@@ -61,8 +61,8 @@ class QueryMan {
     def where
     Map<String, String> orderAttributeMap = [:]
 
-    Map columnSetupMap = [:]
-    Map tableSetupMap = [:]
+    Map<String, QueryColumnSetup> columnSetupMap = [:]
+    Map<String, QueryTableSetup> tableSetupMap = [:]
     Map typeMap = [:]
     Map replaceMap = [:]
     String command
@@ -1594,7 +1594,7 @@ class QueryMan {
         return machingMap
     }
 
-    Map generateTableSetupMap(Class resultType) throws IllegalAccessException {
+    Map<String, QueryTableSetup> generateTableSetupMap(Class resultType) throws IllegalAccessException {
         Map tableSetupMap = [:]
         if (resultType.getAnnotation(QueryTableSetup.class)){
             QueryTableSetup annotation = resultType.getAnnotation(QueryTableSetup.class)
@@ -1606,8 +1606,8 @@ class QueryMan {
         return tableSetupMap
     }
 
-    Map generateColumnSetupMap(Class resultType) throws IllegalAccessException {
-        Map columnSetupMap = [:]
+    Map<String, QueryColumnSetup> generateColumnSetupMap(Class resultType) throws IllegalAccessException {
+        Map<String, QueryColumnSetup> columnSetupMap = [:]
         resultType.getDeclaredFields().each{ Field field ->
             QueryColumnSetup annotation = field.getAnnotation(QueryColumnSetup.class);
             if( annotation ){
@@ -1762,7 +1762,7 @@ class QueryMan {
     }
 
     String getColumnType(Class clazz, QueryColumnSetup columnSetupAnnotation){
-        Integer length = columnSetupAnnotation.length()
+        Integer length = columnSetupAnnotation ? columnSetupAnnotation.length() : 100
         if (clazz == Date.class){
             return "DATE"
 
