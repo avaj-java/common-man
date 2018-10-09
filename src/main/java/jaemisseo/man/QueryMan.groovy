@@ -933,6 +933,7 @@ class QueryMan {
         }catch(Exception e){
             e.printStackTrace()
             rollBackAll()
+            throw e
         }finally{
             disconnectAll()
             modeTransaction = false
@@ -1761,6 +1762,7 @@ class QueryMan {
     }
 
     String getColumnType(Class clazz, QueryColumnSetup columnSetupAnnotation){
+        Integer length = columnSetupAnnotation.length()
         if (clazz == Date.class){
             return "DATE"
 
@@ -1768,7 +1770,7 @@ class QueryMan {
             if (columnSetupAnnotation && columnSetupAnnotation.big())
                 return "CLOB"
             else
-                return "VARCHAR2(500)"
+                return "VARCHAR2(${length})"
 
         }else if (clazz == Integer.class){
             return "NUMBER"
