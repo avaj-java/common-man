@@ -629,16 +629,17 @@ class VariableMan {
 
     String parseMember(String member, Map variableStringMap, Map variableClosureMap){
         try{
-            if ( member
-                && member.length() > 1
-                && ((member.startsWith(charDoubleQuote) && member.endsWith(charDoubleQuote)) || (member.startsWith(charSingleQuote) && member.endsWith(charSingleQuote)))
-            ){
-                member = member.substring(1, member.length() -1)
-            }else{
-                Closure variableClosure = getIgnoreCase(variableClosureMap, member)
-                String variableValue = getIgnoreCase(variableStringMap, member)
-                if (variableClosure != null || variableValue != null){
-                    member = new VariableMan(variableStringMap).setModeExistCodeOnly(false).parse( '${' +member+ '}' )
+            if (member){
+                if (member.length() > 1
+                    && ((member.startsWith(charDoubleQuote) && member.endsWith(charDoubleQuote)) || (member.startsWith(charSingleQuote) && member.endsWith(charSingleQuote)))
+                ){
+                    member = member.substring(1, member.length() -1)
+                }else{
+                    Closure variableClosure = getIgnoreCase(variableClosureMap, member)
+                    String variableValue = getIgnoreCase(variableStringMap, member)
+                    if (variableClosure != null || variableValue != null){
+                        member = new VariableMan(variableStringMap).setModeExistCodeOnly(false).parse( '${' +member+ '}' )
+                    }
                 }
             }
         }catch(e){
