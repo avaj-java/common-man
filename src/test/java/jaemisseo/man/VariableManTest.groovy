@@ -3,6 +3,9 @@ package jaemisseo.man
 import org.junit.Before
 import org.junit.Test
 
+import java.util.regex.Matcher
+import java.util.regex.Pattern
+
 /**
  * Created with IntelliJ IDEA.
  * User: sujkim
@@ -47,14 +50,34 @@ class VariableManTest {
                         ],
                         bar: "i am foofoo.bar"
                 ],
-                search: "HELLO SEARCH !!!"
+                search: "HELLO SEARCH !!!",
+                hello: 'hello',
+                like: 'I LIKE BANANA.',
+                nothing: '',
+                null: null,
+                zero: 0,
+                tab: 'hello\ttab1\t\t\ttab3\t\t\t\ttab4',
+                'my.date': '2010 01 01',
+                'my.date2': '2012/07/21 13:55:41',
+                tableName: 'TBHOHO0012',
+                indexSeq: '3',
+                indexString: 'b',
+                number1: 1,
+                number2: '2',
+                number3: '3',
+                number4: 4,
         ])
 //        .setModeDebug(true)
     }
 
     @Test
-    void "간단 테스트"() {
+    void usage1(){
+        println varman.parse('site-option-${if(_lib.dir, starts, "D:/dev/workspaces1/").add("test").elseif(_lib.dir, starts, "D:/dev_by_sj/workspaces2/").add("real").else().add("dev")}.properties')
+    }
 
+
+    @Test
+    void simpleVariable() {
         // Test empty string
         assert varman.parse('') == ""
 
@@ -117,7 +140,201 @@ class VariableManTest {
 
         println varman.setModeExistCodeOnly(false).parseDefaultVariableOnly(tempCode)
         assert varman.setModeExistCodeOnly(false).parseDefaultVariableOnly(tempCode).startsWith('${USERNAME} ${notExistsVariable} [')
+
+        varman.setModeExistCodeOnly(true)
     }
+
+    @Test
+    void userSetLength(){
+        assert varman.parse('${like()}') == 'I LIKE BANANA.'
+        assert varman.parse('${like}') == 'I LIKE BANANA.'
+        assert varman.parse('${like(1)}') == 'I'
+        assert varman.parse('${like(2)}') == 'I '
+        assert varman.parse('${like(16)}') == 'I LIKE BANANA.  '
+        assert varman.parse('${like(16).right(0)}') == 'I LIKE BANANA.00'
+        assert varman.parse('${like(16).left(0)}') == '00I LIKE BANANA.'
+        //- UserSetLength with variable
+        assert varman.parse('${number1}') == '1'
+        assert varman.parse('${number2}') == '2'
+        assert varman.parse('${number3}') == '3'
+        assert varman.parse('${like(number1)}') == 'I'
+        assert varman.parse('${like(number4)}') == 'I LI'
+        assert varman.parse('${like(number2)} / ${like(number3)}') == 'I  / I L'
+        //
+        assert varman.parse('${not.exist.value(5).left(0)}')  == '00000'
+        assert varman.parse('${nothing(5).left(0)}')  == '00000'
+        assert varman.parse('${not.exist.value(0).left(0)}')  == ''
+        assert varman.parse('${nothing(0).left(0)}')  == ''
+    }
+
+    @Test
+    void syntexTest(){
+        println varman.parse('${random(3)}')
+        println varman.parse('${random()}')
+        println varman.parse('${random}')
+        println varman.parse('${date()}')
+        println varman.parse('${date}')
+        println varman.parse('${enter()}1${enter(2)}2${enter(3)}3')
+        println varman.parse('${enter}1${enter}2${enter}3')
+
+        println varman.parse('${my.date().dateformat(yyyy MM dd )}')
+        println varman.parse('${my.date().dateformat(yyyy MM dd, yy/MM/dd/HH/mm/ss)}')
+        println varman.parse('${my.date2().dateformat(yyyy/MM/dd)}')
+        println varman.parse('${my.date2().dateformat(yyyy/MM/dd HH:mm:ss)}')
+        println varman.parse('${my.date2().dateformat(yyyy/MM/dd HH:mm:ss, yy/MM/dd/HH/mm/ss)}')
+        println varman.parse('${my.date2().dateformat("yyyy/MM/dd HH:mm:ss", "yy/MM/dd/HH/mm/ss")}')
+
+        assert varman.parse('${random(3)}').length() == 3
+    }
+
+    @Test
+    void systemVariableTest() {
+        // Test - left() and right()
+        println '_USER.NAME: ' + varman.parse('${_user.name}')
+        println '_USER.DIR: ' + varman.parse('${_user.dir}')
+        println '_USER.HOME: ' + varman.parse('${_user.home}')
+        println '_OS.NAME: ' + varman.parse('${_os.name}')
+        println '_OS.VERSION: ' + varman.parse('${_os.version}')
+        println '_JAVA.VERSION: ' + varman.parse('${_java.version}')
+        println '_JAVA.HOME: ' + varman.parse('${_java.home}')
+        println '_HOSTNAME: ' + varman.parse('${_hostname}')
+        println '_IP: ' + varman.parse('${_ip}')
+        println '_LIB.DIR: ' + varman.parse('${_lib.dir}')
+        println '_LIB.PATH: ' + varman.parse('${_lib.path}')
+    }
+
+    @Test
+    void patternTest(){
+        //TODO: 추후 괄호 매칭패턴 더욱 연구 필요
+        String patternToGetMembers = '(?:[(][\'][\'](?:\\(\\))[)]|[(][^()]*[)])'
+        String content = '${enter()}1${enter(2)}2${enter(3)}3'
+        Matcher m = Pattern.compile(patternToGetMembers).matcher(content)
+        m.each{
+            println it
+        }
+    }
+
+
+    @Test
+    void addTypeFunction(){
+        // Test - replace
+        assert varman.parse('${installer.level.1.file.path().add(VariableMan)}') == '/foo/barVariableMan'
+        assert varman.parse('${installer.level.1.file.path().add(I\'m VariableMan)}') == '/foo/barI\'m VariableMan'
+        assert varman.parse('${installer.level.1.file.path().addBefore(I\'m VariableMan)}') == 'I\'m VariableMan/foo/bar'
+        assert varman.parse('${installer.level.1.file.path().add( enter )}') == '/foo/bar\n'
+        assert varman.parse('${installer.level.1.file.path().add( . )}') == '/foo/bar.'
+        assert varman.parse('${installer.level.1.file.path().add( . )}') == '/foo/bar.'
+
+        assert varman.parse('${installer.level.1.file.path().add( "," )}') == '/foo/bar,'
+        assert varman.parse('${installer.level.1.file.path().add(",")}') == '/foo/bar,'
+        assert varman.parse('${installer.level.1.file.path().add(" GRANT SELECT, INSERT, UPDATE, DELETE ON ").add(tableName).add(" TO RR_").add(tableName).add(_WW)}') == '/foo/bar GRANT SELECT, INSERT, UPDATE, DELETE ON TBHOHO0012 TO RR_TBHOHO0012_WW'
+    }
+
+    @Test
+    void existFunction(){
+        // Test - replace
+        assert varman.parse('Hello ${nothing().exist().add(VariableMan)}') == 'Hello '
+        assert varman.parse('Hello ${nothing().exist().add(VariableMan)}') == 'Hello '
+        assert varman.parse('Hello ${nothing().exist().addBefore(VariableMan)}') == 'Hello '
+
+        assert varman.parse('Hello ${nothing().add(VariableMan)}') == 'Hello VariableMan'
+        assert varman.parse('Hello ${nothing().add(Variable . Man)}') == 'Hello Variable . Man'
+        assert varman.parse('Hello ${nothing().addBefore( . Variable . Man . )}') == 'Hello . Variable . Man .'
+        assert varman.parse('Hello ${nothing().addBefore(" . Variable . Man . ")}') == 'Hello  . Variable . Man . '
+
+        assert varman.parse('Hello ${hello().add(" VariableMan ")}') == 'Hello hello VariableMan '
+        assert varman.parse('Hello ${hello().add(" VariableMan ")}') == 'Hello hello VariableMan '
+        assert varman.parse('Hello ${hello().addBefore(" VariableMan ")}') == 'Hello  VariableMan hello'
+    }
+
+    @Test
+    void conditionFunction(){
+        /** IF - Equals / Starts / Ends / Contains / Matches **/
+        assert varman.parse('Hello ${hello().if(equals, "hello").add(ADD1)}') == 'Hello helloADD1'
+        assert varman.parse('Hello ${hello().if(equals, "ello").add(ADD1)}') == 'Hello hello'
+        assert varman.parse('Hello ${hello().if(starts, "he").addBefore(ADD1)}') == 'Hello ADD1hello'
+        assert varman.parse('Hello ${hello().if(starts, "el").addBefore(ADD1)}') == 'Hello hello'
+        assert varman.parse('Hello ${hello().if(ends, "llo").addBefore(ADD1)}') == 'Hello ADD1hello'
+        assert varman.parse('Hello ${hello().if(ends, "ll").addBefore(ADD1)}') == 'Hello hello'
+        assert varman.parse('Hello ${hello().if(contains, "ll").addBefore(ADD1)}') == 'Hello ADD1hello'
+        assert varman.parse('Hello ${hello().if(contains, "el").addBefore(ADD1)}') == 'Hello ADD1hello'
+        assert varman.parse('Hello ${hello().if(contains, "rel").addBefore(ADD1)}') == 'Hello hello'
+        assert varman.parse('Hello ${hello().if(contains, "").addBefore(ADD1)}') == 'Hello ADD1hello'
+        assert varman.parse('Hello ${hello().if(matches, "^hello").addBefore(ADD1)}') == 'Hello ADD1hello'
+        assert varman.parse('Hello ${hello().if(matches, "\\w*").addBefore(ADD1)}') == 'Hello ADD1hello'
+        assert varman.parse('Hello ${hello().if(matches, "\\d*").addBefore(ADD1)}') == 'Hello hello'
+
+        /** IF - Exists / Empty / Null **/
+        // hello = 'hello'
+        assert varman.parse('Hello ${hello().if(exists).add(ADD1)}') == 'Hello helloADD1'
+        assert varman.parse('Hello ${hello().if(notexists).add(ADD1)}') == 'Hello hello'
+        assert varman.parse('Hello ${hello().if(empty).add(ADD1)}') == 'Hello hello'
+        assert varman.parse('Hello ${hello().if(notempty).add(ADD1)}') == 'Hello helloADD1'
+        assert varman.parse('Hello ${hello().if(null).add(ADD1)}') == 'Hello hello'
+        assert varman.parse('Hello ${hello().if(notnull).add(ADD1)}') == 'Hello helloADD1'
+        // nothing = ''
+        assert varman.parse('Hello ${nothing().if(exists).add(ADD1)}') == 'Hello '
+        assert varman.parse('Hello ${nothing().if(notexists).add(ADD1)}') == 'Hello ADD1'
+        assert varman.parse('Hello ${nothing().if(empty).add(ADD1)}') == 'Hello ADD1'
+        assert varman.parse('Hello ${nothing().if(notempty).add(ADD1)}') == 'Hello '
+        assert varman.parse('Hello ${nothing().if(null).add(ADD1)}') == 'Hello '
+        assert varman.parse('Hello ${nothing().if(notnull).add(ADD1)}') == 'Hello ADD1'
+        // thereIsNoVariable = null
+        assert varman.parse('Hello ${thereIsNoVariable().if(exists).add(ADD1)}') == 'Hello '
+        assert varman.parse('Hello ${thereIsNoVariable().if(notexists).add(ADD1)}') == 'Hello ADD1'
+        assert varman.parse('Hello ${thereIsNoVariable().if(empty).add(ADD1)}') == 'Hello '
+        assert varman.parse('Hello ${thereIsNoVariable().if(notempty).add(ADD1)}') == 'Hello ADD1'
+        assert varman.parse('Hello ${thereIsNoVariable().if(null).add(ADD1)}') == 'Hello ADD1'
+        assert varman.parse('Hello ${thereIsNoVariable().if(notnull).add(ADD1)}') == 'Hello '
+
+        /** IF and ELSEIF **/
+        assert varman.parse('Hello ${if("1", equals, "1").add(ADD1)}') == 'Hello ADD1'
+        assert varman.parse('Hello ${if("1", equals, "2").add(ADD1)}') == 'Hello '
+        assert varman.parse('Hello ${if("1", equals, "3").add(ADD1).elseif("2", equals, "3").add(ADD2).elseif("3", equals, "3").add(ADD3).elseif("4", equals, "3").add(ADD4).elseif("5", equals, "3").add(ADD5)}') == 'Hello ADD3'
+        assert varman.parse('Hello ${if("1", equals, "3").add(ADD1).elseif("2", equals, "3").add(ADD2).elseif("3", equals, "3").add(ADD3).elseif("4", equals, "4").add(ADD4).elseif("5", equals, "5").add(ADD5)}') == 'Hello ADD3'
+        assert varman.parse('Hello ${if("1", notequals, "3").add(ADD1).elseif("2", notequals, "3").add(ADD2).elseif("3", notequals, "3").add(ADD3).elseif("4", equals, "4").add(ADD4).elseif("5", equals, "5").add(ADD5).else().add(else)}') == 'Hello ADD1'
+        assert varman.parse('Hello ${if("1", notequals, "3").add(ADD1).elseif("2", notequals, "3").add(ADD2).elseif("3", notequals, "3").add(ADD3).elseif("4", equals, "4").add(ADD4).elseif("5", equals, "5").add(ADD5).else().add(else).endif().add(" ReHello")}') == 'Hello ADD1 ReHello'
+        assert varman.parse('Hello ${if("3", notequals, "3").add(ADD1).elseif("3", notequals, "3").add(ADD2).elseif("3", notequals, "3").add(ADD3).elseif("4", equals, "3").add(ADD4).elseif("5", equals, "5").add(ADD5).else().add(else).endif().add(" ReHello")}') == 'Hello ADD5 ReHello'
+        assert varman.parse('Hello ${if("3", notequals, "3").add(ADD1).elseif("3", notequals, "3").add(ADD2).elseif("3", notequals, "3").add(ADD3).elseif("4", equals, "3").add(ADD4).elseif("5", equals, "3").add(ADD5).else().add(else).endif().add(" ReHello")}') == 'Hello else ReHello'
+
+        /** IF and ELSEIF and IF AGAIN **/
+        assert varman.parse('Hello ${if(b, starts, b).add(Variable . Man).elseif(a,equals,a).add("Addition")}') == 'Hello Variable . Man'
+        assert varman.parse('Hello ${if(a, starts, b).add(Variable . Man).elseif(a,equals,a).add("Addition")}') == 'Hello Addition'
+        assert varman.parse('Hello ${if(a, starts, "a").add(Variable . Man).elseif(a,equals,a).add("Addition").if(a,equals,a)}') == 'Hello Variable . Man'
+        assert varman.parse('Hello ${if(a, starts, b).add(Variable . Man).elseif(a,equals,a).add("Addition").if(a,equals,a)}') == 'Hello Addition'
+        assert varman.parse('Hello ${if(abc, starts, ab).add(ADD1).elseif(a,equals,a).add("ADD2").elseif("aa",equals,"aa").add("ADD3").if(a,equals,a).add("newIf1")}') == 'Hello ADD1newIf1'
+        assert varman.parse('Hello ${if(abc, starts, bc).add(ADD1).elseif(abc,starts,c).add("ADD2").else().add("else ").if(a,equals,b).add("newIf1")}') == 'Hello else '
+
+        /** IF and ELSEIF and IF AGAIN **/
+        assert varman.parse('Hello ${if(b, starts, b).add(Variable . Man).add(" doubleAdd").add(" tripleAdd").elseif(a,equals,a).add("Addition")}') == 'Hello Variable . Man doubleAdd tripleAdd'
+        assert varman.parse('Hello ${if(a, starts, b).add(Variable . Man).add(" doubleAdd").add(" tripleAdd").elseif(a,equals,a).add("Addition")}') == 'Hello Addition'
+    }
+
+    @Test
+    void replaceFunction(){
+        // Test - replace
+        assert varman.parse('${installer.level.1.file.path(3).replace(f,o)}') == '/oo'
+        assert varman.parse('${installer.level.1.file.path(3).replace(/,o)}') == 'ofo'
+        assert varman.parse('${installer.level.1.file.path(3).replace(/,o).replace(f,o)}') == 'ooo'
+
+        // Test - replace
+        assert varman.parse('${tab().replace("\t","")}') == 'hellotab1tab3tab4'
+        assert varman.parse('${tab().replace("\t"," ")}') == 'hello tab1   tab3    tab4'
+
+        // Test - replace_regex
+        assert varman.parse('${installer.level.1.file.path().replaceAll(/,o)}') == 'ofooobar'
+        assert varman.parse('${installer.level.1.file.path().replaceAll(^/,"s")}') == 'sfoo/bar'
+//        assert varman.parse('${installer.level.1.file.path().replace_regex([/]$,s)}') == '/foosbar'
+    }
+
+    @Test
+    void pickOne(){
+        //특정 번호에 맞는 것을 선택
+        println varman.parse('X${tableName().replaceFirst(^T,"")}${pick(indexSeq, 간,나,하,호,a,b,c,d,e,f,A..Z, 1..100, AA..AZ)}')
+        //특정 문자에 맞는 것 다음 것을 선택
+        println varman.parse('X${tableName().replaceFirst(^T,"")}${pickNextOf(indexString, A..Z)}')
+    }
+
 
     @Test
     void "Properties 스타일 Variable로 변환"(){
