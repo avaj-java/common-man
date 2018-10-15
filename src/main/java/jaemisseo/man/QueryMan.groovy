@@ -802,15 +802,38 @@ class QueryMan {
             }
         //NORMAL
         }else{
-            closure = { row ->
+            closure = { GroovyRowResult row ->
                 def rowDto = resultType.newInstance()
                 attribute.each{ String propNm ->
-                    rowDto[propNm] = row[resultMap[propNm]]
+                    def value = row[resultMap[propNm]]
+                    Class clazzToSetValue = typeMap[propNm]
+                    //- Inject value to field
+                    injectToValue(value, clazzToSetValue, rowDto, propNm)
                 }
                 return rowDto
             }
         }
         return closure
+    }
+
+    boolean injectToValue(def value, Class clazzToSetValue, def rowDto, String fieldName){
+        String valueString = value.toString()
+        if (clazzToSetValue){
+            if (clazzToSetValue == String.class && !(value instanceof String)){
+                rowDto[fieldName] = value
+            }else if (clazzToSetValue == Integer.class || clazzToSetValue == int){
+                rowDto[fieldName] = Integer.parseInt(valueString)
+            }else if (clazzToSetValue == Long.class || clazzToSetValue == long){
+                rowDto[fieldName] = Long.parseLong(valueString)
+            }else if (clazzToSetValue == Boolean.class || clazzToSetValue == boolean){
+                rowDto[fieldName] = valueString ? ['Y','1','OK','YES'].contains(valueString.toUpperCase()) : false
+            }else{
+                rowDto[fieldName] = value
+            }
+        }else{
+            rowDto[fieldName] = value
+        }
+        return true
     }
 
     Closure getMetaClosure(){
@@ -1762,6 +1785,12 @@ class QueryMan {
     }
 
     String getColumnType(Class clazz, QueryColumnSetup columnSetupAnnotation){
+        /** Custom DataType **/
+        String dataType = columnSetupAnnotation ? columnSetupAnnotation.value() : ''
+        if (dataType)
+            return dataType
+
+        /** Default Setup DataType **/
         Integer length = columnSetupAnnotation ? columnSetupAnnotation.length() : 100
         if (clazz == Date.class){
             return "DATE"
@@ -1772,10 +1801,9 @@ class QueryMan {
             else
                 return "VARCHAR2(${length})"
 
-        }else if (clazz == Integer.class){
-            return "NUMBER"
-
-        }else if (clazz == Boolean.class){
+        }else if (clazz == Boolean.class
+        || clazz == Integer.class || clazz == int
+        || clazz == Long.class || clazz == long){
             return "NUMBER"
         }
 

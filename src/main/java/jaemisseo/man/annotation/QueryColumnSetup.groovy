@@ -16,7 +16,7 @@ import java.lang.annotation.Target
 @Retention(RetentionPolicy.RUNTIME)
 public @interface QueryColumnSetup {
 
-    String value() default "DEFAULT";
+    String value() default "";
 
     int length() default 100;
 
