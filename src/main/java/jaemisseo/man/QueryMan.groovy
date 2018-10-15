@@ -802,7 +802,7 @@ class QueryMan {
             }
         //NORMAL
         }else{
-            closure = { GroovyRowResult row ->
+            closure = { row ->
                 def rowDto = resultType.newInstance()
                 attribute.each{ String propNm ->
                     def value = row[resultMap[propNm]]
