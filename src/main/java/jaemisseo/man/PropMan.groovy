@@ -448,6 +448,8 @@ class PropMan {
         return propertyName.replace('\\', '/').matches(regexpStr)
     }
 
+
+
     /*************************
      *
      * MERGE NEW
@@ -488,6 +490,11 @@ class PropMan {
 
 
 
+    /*************************
+     *
+     * DIFF
+     *
+     *************************/
     Map diffMap(PropMan with){
         return diffMap(with.properties)
     }
@@ -498,6 +505,79 @@ class PropMan {
 
 
 
+    /*************************
+     *
+     * Compare and Make properties
+     *
+     *************************/
+    Properties compareAndMakeInsertedProperties(PropMan propManAfter){
+        return compareAndMakeInsertedProperties(propManAfter.properties)
+    }
+
+    Properties compareAndMakeInsertedProperties(Map<String, Object> propertiesMapAfter){
+        Properties resultProperties = new Properties()
+        String beforeValue
+        String afterValue
+        for (Object key : propertiesMapAfter.keySet()){
+            beforeValue = (String) this.get(key)
+            afterValue = (String) propertiesMapAfter.get(key)
+            //- New
+            if (beforeValue == null && afterValue != null){
+                resultProperties.put(key, afterValue)
+            }
+        }
+        return resultProperties
+    }
+
+
+    Properties compareAndMakeModifiedProperties(PropMan propManAfter){
+        return compareAndMakeModifiedProperties(propManAfter.properties)
+    }
+
+    Properties compareAndMakeModifiedProperties(Map<String, Object> propertiesMapAfter){
+        Properties resultProperties = new Properties()
+        String beforeValue
+        String afterValue
+        for (Object key : propertiesMapAfter.keySet()){
+            beforeValue = (String) this.get(key)
+            afterValue = (String) propertiesMapAfter.get(key)
+            //- Modifed
+            if (beforeValue != null && afterValue != null && !beforeValue.equals(afterValue)){
+                resultProperties.put(key, afterValue)
+            }
+        }
+        return resultProperties
+    }
+
+
+    Properties compareAndMakeDeletedProperties(PropMan propManAfter){
+        return compareAndMakeDeletedProperties(propManAfter.properties)
+    }
+
+    Properties compareAndMakeDeletedProperties(Map<String, Object> propertiesMapAfter){
+        Properties resultProperties = new Properties()
+        String beforeValue
+        String afterValue
+        for (Object key : this.properties.keySet()){
+            beforeValue = (String) this.get(key)
+            afterValue = (String) propertiesMapAfter.get(key)
+            //- Deleted
+            if (beforeValue != null && afterValue == null){
+                resultProperties.put(key, "")
+            }
+        }
+        return resultProperties
+    }
+
+
+
+
+
+    /*************************
+     *
+     * Utils
+     *
+     *************************/
     void validate(def checkList){
         checkList.each { propKey ->
             if (!properties[propKey])

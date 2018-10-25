@@ -100,4 +100,27 @@ class PropManTest {
         return isSameSize && containsAll
     }
 
+
+    @Test
+    void compareTest(){
+        PropMan beforeProp_1 = new PropMan([a:1])
+        PropMan afterProp_1 = new PropMan([a:1])
+        assert !beforeProp_1.compareAndMakeInsertedProperties(afterProp_1)
+        assert !beforeProp_1.compareAndMakeModifiedProperties(afterProp_1)
+        assert !beforeProp_1.compareAndMakeDeletedProperties(afterProp_1)
+
+        PropMan beforeProp_2 = new PropMan([b:'b', c:'c', d:'d'])
+        PropMan afterProp_2 = new PropMan([a:'a', b:'bbb', c:'c'])
+        assert beforeProp_2.compareAndMakeInsertedProperties(afterProp_2) == [a:'a']
+        assert beforeProp_2.compareAndMakeModifiedProperties(afterProp_2) == [b:'bbb']
+        assert beforeProp_2.compareAndMakeDeletedProperties(afterProp_2) == [d:'']
+
+        PropMan beforeProp_3 = new PropMan([b:'b', c:'c', d:'d'])
+        PropMan afterProp_3 = new PropMan([a:'a', b:'bbb', c:'c', e:''])
+        assert beforeProp_3.compareAndMakeInsertedProperties(afterProp_3) == [a:'a', e:'']
+        assert beforeProp_3.compareAndMakeModifiedProperties(afterProp_3) == [b:'bbb']
+        assert beforeProp_3.compareAndMakeDeletedProperties(afterProp_3) == [d:'']
+    }
+
+
 }
