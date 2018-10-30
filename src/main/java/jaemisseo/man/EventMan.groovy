@@ -311,21 +311,21 @@ class EventMan {
      * Stop Event
      *************************/
     EventMan stopEvent(String eventName, String applicant) {
-        EventStarter eventItem = eventNameEventItemMap[eventName]
-        if (!eventItem){
+        if (!hasEvent(eventName)){
             logger.error("No Event Item ${eventName}")
             return this
         }
+        EventStarter eventItem = eventNameEventItemMap[eventName]
         eventItem.stop(applicant)
         return this
     }
 
     EventMan stopEvent(String eventName) {
-        EventStarter eventItem = eventNameEventItemMap[eventName]
-        if (!eventItem){
+        if (!hasEvent(eventName)){
             logger.error("No Event Item ${eventName}")
             return this
         }
+        EventStarter eventItem = eventNameEventItemMap[eventName]
         eventItem.stop()
         return this
     }
@@ -340,6 +340,17 @@ class EventMan {
         return this
     }
 
+    /*************************
+     * Stop Event as Single Thread
+     *************************/
+    void stopAsSingeThread(String applicant){
+        this.eventmanAsSingleThread.stopEvent('SingleThread', applicant)
+    }
+
+    void stopAsSingeThread(){
+        this.eventmanAsSingleThread.stopEvent('SingleThread')
+    }
+
 
 
     /*************************
@@ -350,7 +361,7 @@ class EventMan {
     }
 
     synchronized EventMan addEvent(String eventName, EventHandler eventHandler, Long intervalTime){
-        if (this.eventNameEventItemMap[eventName]){
+        if (hasEvent(eventName)){
             logger.error('Already exists event name.')
             return this
         }
@@ -362,21 +373,31 @@ class EventMan {
     }
 
 
+    /*************************
+     * Has
+     *************************/
+    boolean hasEvent(String eventName){
+        return eventNameEventItemMap.containsKey(eventName)
+    }
+
 
     /*************************
      * Del
      *************************/
     synchronized EventMan delEvent(String eventName){
+        stopEvent(eventName)
         eventNameEventItemMap.remove(eventName)
         return this
     }
 
 
-
-
-
-
-
+    /*************************
+     * Check alive event
+     *************************/
+    boolean isAliveEvent(String eventName){
+        EventStarter eventItem = eventNameEventItemMap[eventName]
+        return (eventItem && eventItem.isAlive()) || (eventmanAsSingleThread && eventItem)
+    }
 
 
 
