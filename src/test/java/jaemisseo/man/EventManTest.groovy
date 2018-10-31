@@ -16,26 +16,38 @@ class EventManTest {
 
             void doEvent(EventMan.EventStarter eventStarter, Long index) {
                 println "hi"
-                println EventMan.getMain().isAliveEvent('test1')
-                println EventMan.getMain().isAliveEvent('test2')
             }
         })
         EventMan.getMain().runAsSingeThread()
+        println "Start"
+        sleep(5000)
+
 
         int cnt = 0
-        while(++cnt < 3){
-            sleep(1000)
+        while(++cnt < 30){
+            sleep(100)
+            assert EventMan.getMain().isAliveEvent('test1')
+            assert !EventMan.getMain().isAliveEvent('test2')
         }
         EventMan.getMain().stopAsSingeThread()
+        println "Stop"
+        sleep(5000)
 
         cnt = 0
-        while(++cnt < 3){
-            sleep(1000)
+        while(++cnt < 30){
+            assert !EventMan.getMain().isAliveEvent('test1')
+            assert !EventMan.getMain().isAliveEvent('test2')
+            sleep(100)
         }
         EventMan.getMain().runAsSingeThread()
+        println "Start"
+        sleep(5000)
 
-        while(true){
-            sleep(1000)
+        cnt = 0
+        while(++cnt <30){
+            assert EventMan.getMain().isAliveEvent('test1')
+            assert !EventMan.getMain().isAliveEvent('test2')
+            sleep(100)
         }
     }
 

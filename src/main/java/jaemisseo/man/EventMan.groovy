@@ -396,7 +396,8 @@ class EventMan {
      *************************/
     boolean isAliveEvent(String eventName){
         EventStarter eventItem = eventNameEventItemMap[eventName]
-        return (eventItem && eventItem.isAlive()) || (eventmanAsSingleThread && eventItem)
+//        return (eventItem && eventItem.isAlive()) || (eventmanAsSingleThread && eventItem)
+        return (eventItem && eventItem.isAlive()) || (eventmanAsSingleThread && eventmanAsSingleThread.isAliveEvent('SingleThread') && eventItem)
     }
 
 
