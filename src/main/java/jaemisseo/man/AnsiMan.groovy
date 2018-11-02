@@ -50,9 +50,26 @@ class AnsiMan {
         return ANSI_CYAN + text + ANSI_RESET
     }
 
+    static String testYellow(String text){
+        return ANSI_YELLOW + text + ANSI_RESET
+    }
+
+    static String testGreen(String text){
+        return ANSI_GREEN + text + ANSI_RESET
+    }
+
+    static String testBlue(String text){
+        return ANSI_BLUE + text + ANSI_RESET
+    }
+
+    static String testPupple(String text){
+        return ANSI_PURPLE + text + ANSI_RESET
+    }
+
     static String testRed(String text){
         return ANSI_RED + text + ANSI_RESET
     }
+
 
 
 
