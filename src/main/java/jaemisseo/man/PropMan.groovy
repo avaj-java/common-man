@@ -287,7 +287,8 @@ class PropMan {
     private void loadPropertiesFile(File file){
         try{
             String text = getTextFromFile(file)
-            properties.load( new StringReader(text.replace('\\','\\\\')) )
+//            text = text?.replace('\\','\\\\')
+            properties.load( new StringReader(text) )
             filePath = file.path
 
         }catch(Exception e){
