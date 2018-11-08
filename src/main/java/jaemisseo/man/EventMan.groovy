@@ -316,7 +316,8 @@ class EventMan {
             return this
         }
         EventStarter eventItem = eventNameEventItemMap[eventName]
-        eventItem.stop(applicant)
+        if (!modeSingleThread)
+            eventItem.stop(applicant)
         return this
     }
 
@@ -326,7 +327,8 @@ class EventMan {
             return this
         }
         EventStarter eventItem = eventNameEventItemMap[eventName]
-        eventItem.stop()
+        if (!modeSingleThread)
+            eventItem.stop()
         return this
     }
 
@@ -334,8 +336,12 @@ class EventMan {
      * Stop All Event
      *************************/
     EventMan stopEventAll() {
-        eventNameEventItemMap.each{ String eventName, EventStarter eventItem ->
-            eventItem.stop()
+        if (modeSingleThread){
+            stopAsSingeThread()
+        }else{
+            eventNameEventItemMap.each{ String eventName, EventStarter eventItem ->
+                eventItem.stop()
+            }
         }
         return this
     }
