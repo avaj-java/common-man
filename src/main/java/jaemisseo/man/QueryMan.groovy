@@ -13,6 +13,7 @@ import java.lang.reflect.Array
 import java.lang.reflect.Field
 import java.sql.Clob
 import java.sql.Connection
+import java.sql.SQLSyntaxErrorException
 
 /**
  * Created with IntelliJ IDEA.
@@ -48,8 +49,8 @@ class QueryMan {
 
 
     //Clearable
-    Sql sql
-    Connection conn
+    private Sql sql
+    private Connection conn
     String connectionName
     String vendor
     int batchSize
@@ -834,6 +835,8 @@ class QueryMan {
                 rowDto[fieldName] = Long.parseLong(valueString)
             }else if (clazzToSetValue == Boolean.class || clazzToSetValue == boolean){
                 rowDto[fieldName] = valueString ? ['Y','1','OK','YES'].contains(valueString.toUpperCase()) : false
+            }else if (clazzToSetValue == Date.class){
+                    rowDto[fieldName] = new java.text.SimpleDateFormat('yyyy-MM-dd HH:mm:ss.SSS').parse(value.toString())
             }else{
                 rowDto[fieldName] = value
             }
@@ -1015,95 +1018,95 @@ class QueryMan {
 
         values = (param) ? generateValues(param) : []
 
-        try{
+        try {
 
             /** SELECT META LIST **/
             if (modeMeta) {
                 query = getQueryForOneRow(query)
                 sql.rows(query, values, { meta ->
                     int colCnt = meta.columnCount
-                    (1..colCnt).each{
+                    (1..colCnt).each {
                         result << meta.getColumnName(it)
                     }
                 })
 
-            /** SELECT COUNT as INTEGER **/
-            }else if (modeCountAsInteger){
-                sql.rows(query, values).each{
+                /** SELECT COUNT as INTEGER **/
+            } else if (modeCountAsInteger) {
+                sql.rows(query, values).each {
                     result = it['CNT'] as Integer
                 }
 
-            /** SELECT COUNT as LONG **/
-            }else if (modeCountAsLong){
-                sql.rows(query, values).each{
+                /** SELECT COUNT as LONG **/
+            } else if (modeCountAsLong) {
+                sql.rows(query, values).each {
                     result = it['CNT'] as Long
                 }
 
-            /** SELECT MAX **/
-            }else if (modeMax){
-                sql.rows(query, values).each{
+                /** SELECT MAX **/
+            } else if (modeMax) {
+                sql.rows(query, values).each {
                     result = it['MAX_VALUE']
                 }
 
-            /** SELECT MIN **/
-            }else if (modeMin){
-                sql.rows(query, values).each{
+                /** SELECT MIN **/
+            } else if (modeMin) {
+                sql.rows(query, values).each {
                     result = it['MIN_VALUE']
                 }
 
-            }else{
+            } else {
 
                 /** SELECT MAP **/
-                if (result instanceof Map){
+                if (result instanceof Map) {
                     Closure rowClosure
                     if (!resultId && attribute && attribute[0])
                         setResultId(attribute[0])
-                    if (resultId){
+                    if (resultId) {
                         String mapIdColumnNm = resultMap[resultId] ?: resultId
                         rowClosure = { row -> result[row[mapIdColumnNm]] = closure(row) }
-                    }else{
+                    } else {
                         rowClosure = { row -> result[row[0]] = closure(row) }
                     }
-                    if (resultMap){
+                    if (resultMap) {
                         sql.eachRow(query, values, rowClosure)
-                    }else{
+                    } else {
                         sql.eachRow(query, values, getMetaClosure(), rowClosure)
                     }
 
-                /** SELECT LIST **/
-                }else if (result instanceof List){
-                    if (!resultMap){
-                        sql.eachRow(query, values, getMetaClosure()){ row -> result << closure(row) }
-                    }else{
-                        sql.eachRow(query, values){ row -> result << closure(row) }
+                    /** SELECT LIST **/
+                } else if (result instanceof List) {
+                    if (!resultMap) {
+                        sql.eachRow(query, values, getMetaClosure()) { row -> result << closure(row) }
+                    } else {
+                        sql.eachRow(query, values) { row -> result << closure(row) }
                     }
 
-                /** SELECT STRING **/
-                }else if (result instanceof String){
+                    /** SELECT STRING **/
+                } else if (result instanceof String) {
                     GroovyRowResult row = sql.firstRow(query, values)
                     String idColumnName = resultMap[resultId] ?: resultId
                     if (row)
-                        result = (idColumnName) ? (String)row[idColumnName] : (String)row[0]
+                        result = (idColumnName) ? (String) row[idColumnName] : (String) row[0]
                     else
                         result = ""
 
-                /** SELECT INTEGER **/
-                }else if (result instanceof Integer){
+                    /** SELECT INTEGER **/
+                } else if (result instanceof Integer) {
                     GroovyRowResult row = sql.firstRow(query, values)
                     String idColumnName = resultMap[resultId] ?: resultId
                     if (row)
-                        result = (idColumnName) ? (Integer)row[idColumnName] : (Integer)row[0]
+                        result = (idColumnName) ? (Integer) row[idColumnName] : (Integer) row[0]
 
-                /** SELECT LONG **/
-                }else if (result instanceof Long){
+                    /** SELECT LONG **/
+                } else if (result instanceof Long) {
                     GroovyRowResult row = sql.firstRow(query, values)
                     String idColumnName = resultMap[resultId] ?: resultId
                     if (row)
-                        result = (idColumnName) ? (Long)row[idColumnName] : (Long)row[0]
+                        result = (idColumnName) ? (Long) row[idColumnName] : (Long) row[0]
                 }
             }
 
-        }catch(Exception e){
+        }catch(SQLSyntaxErrorException e){
             //If Table is not Exist Then Try to Create Table,
             if (modeAutoCreateTable && isNotExistTable(e)){
                 if (createTableCount == 0){
@@ -1111,16 +1114,21 @@ class QueryMan {
                     // - Try to Create Table
                     QueryMan tableCreator = getClass().newInstance(conn, resultType)
                     tableCreator.setModeAutoClose(false).createTable()
-                    logger.debug 'Table was Created'
+                    logger.info '- Table was Created'
                     // - Retry
                     return rows(param, closure, result)
                 }
             }
             throw e
+
+        }catch(Exception e){
+            logger.error ('Error during select from db.', e)
+
         }finally{
             // Log Result
             logResult(query, values, result)
             disconnect()
+            createTableCount = 0
         }
 
         return result
@@ -1164,12 +1172,13 @@ class QueryMan {
         values = (param) ? generateValues(param) : []
 
         try{
-            if (values && !command.equals('create'))
-                result = sql.execute(query, values)
-            else
+            if (command.equals('create')){
                 result = sql.execute(query)
+            }else{
+                result = (values) ? sql.execute(query, values) : sql.execute(query)
+            }
 
-        }catch(Exception e){
+        }catch(SQLSyntaxErrorException e){
             //If Table is not Exist Then Try to Create Table,
             if (modeAutoCreateTable && isNotExistTable(e)){
                 if (createTableCount == 0){
@@ -1177,17 +1186,22 @@ class QueryMan {
                     // - Try to Create Table
                     QueryMan tableCreator = getClass().newInstance(conn, resultType)
                     tableCreator.setModeAutoClose(false).createTable()
-                    logger.debug 'Table was Created'
+                    logger.info '- Table was Created'
                     // - Retry
                     return execute(param)
                 }
             }
             sql.rollback()
             throw e
+
+        }catch(Exception e){
+            logger.error ('Error during execute to db.', e)
+
         }finally{
             //Log Result
             logResultForExecute(query, values, result)
             disconnect()
+            createTableCount = 0
         }
 
         return result
@@ -1240,13 +1254,28 @@ class QueryMan {
     }
 
     boolean isNotExistTable(Exception e){
-        if (e.message.indexOf('ORA-00942') != -1){
-            logger.error " - Table or View not exist."
-            return true
-        }else if (e.message.indexOf('ORA-00955') != -1){
-            logger.error " - Already Exist Table."
-        }else
-            e.printStackTrace()
+        switch (vendor?.toUpperCase()){
+            case 'MYSQL':
+                if ( e.message.indexOf("doesn't exist") != -1){
+                    logger.error " - Table or View not exist."
+                    return true
+                }else if (e.message.indexOf('exist') != -1){
+                    logger.error " - Already Exist Table."
+                }else{
+                    e.printStackTrace()
+                }
+                break
+            default:
+                if ( e.message.indexOf('ORA-00942') != -1){
+                    logger.error " - Table or View not exist."
+                    return true
+                }else if (e.message.indexOf('ORA-00955') != -1){
+                    logger.error " - Already Exist Table."
+                }else{
+                    e.printStackTrace()
+                }
+                break
+        }
         return false
     }
 
@@ -1266,12 +1295,21 @@ class QueryMan {
             attribute.each{ String propNm ->
                 if (!replaceMap[propNm]){
                     Field field = param.getClass().getDeclaredField(propNm)
-                    if ([String.class, Date.class, Integer.class, Long.class, Short.class, Double.class].contains(field.type))
+                    if ([String.class, Integer.class, Long.class, Short.class, Double.class].contains(field.type)){
                         values << param[propNm]
-                    else if ([Boolean.class].contains(field.type))
+                    }else if ([Date.class].contains(field.type)){
+                        if (vendor.toUpperCase() == 'ORACLE'){
+                            Date date = param[propNm]
+                            values << new java.sql.Timestamp(date.getTime())
+                        }else{
+                            values << param[propNm]
+                        }
+
+                    }else if ([Boolean.class, boolean].contains(field.type)){
                         values << param[propNm] ? 1: 0
-                    else
+                    }else{
                         values << param[propNm]?.toString()
+                    }
                 }
             }
         }
@@ -1370,15 +1408,18 @@ class QueryMan {
             //Transaction Mode => No Disconnect
         }else{
             if (modeJUnitTest){
-                logger.debug " (Auto Rollback on JUnit TEST)"
-                sql.rollback()
+                logger.info " (Auto Rollback on JUnit TEST)"
+                if (conn)
+                    sql.rollback()
             }
             if (modeAutoClose){
-                sql.close()
+                if (conn)
+                    sql.close()
                 logger.debug " - Completed Disconnected"
             }
             if (modeCloseAfter){
-                sql.close()
+                if (conn)
+                    sql.close()
                 logger.debug " - Completed Disconnected"
             }
         }
@@ -1857,20 +1898,26 @@ class QueryMan {
                 if (clazz == Date.class){
                     return "DATETIME"
                 }else if (clazz == String.class){
-                    return "VARCHAR"
-                }else if (clazz == Boolean.class || clazz == Integer.class || clazz == int || clazz == Long.class || clazz == long){
-                    return "NUMERIC"
+                    if (columnSetupAnnotation && columnSetupAnnotation.big())
+                        return "LONGTEXT"
+                    else
+                        return "VARCHAR(${length})"
+                }else if (clazz == Integer.class || clazz == int || clazz == Long.class || clazz == long){
+                    return "INT"
+                }else if (clazz == Boolean.class || clazz == boolean){
+                    return "TINYINT"
                 }
                 break;
             default:
                 if (clazz == Date.class){
-                    return "DATE"
+//                    return "DATE"
+                    return "TIMESTAMP"
                 }else if (clazz == String.class){
                     if (columnSetupAnnotation && columnSetupAnnotation.big())
                         return "CLOB"
                     else
                         return "VARCHAR2(${length})"
-                }else if (clazz == Boolean.class || clazz == Integer.class || clazz == int || clazz == Long.class || clazz == long){
+                }else if (clazz == Boolean.class || clazz == boolean || clazz == Integer.class || clazz == int || clazz == Long.class || clazz == long){
                         return "NUMBER"
                 }
                 break;
@@ -1926,12 +1973,19 @@ class QueryMan {
 
                 logger = LoggerFactory.getLogger("${classPath}.${methodName}")
 
-                if (logName)
-                    logger.debug "<${logName}> ${className}.${methodName}:${lineNumber}"
+                if (logName){
+                    if (command.equals('create'))
+                        logger.info "<${logName}> ${className}.${methodName}:${lineNumber}"
+                    else
+                        logger.debug "<${logName}> ${className}.${methodName}:${lineNumber}"
+                }
 
                 logContentList.each{
                     if (it){
-                        logger.debug it
+                        if (command.equals('create'))
+                            logger.info it
+                        else
+                            logger.debug it
                     }
                 }
                 break
