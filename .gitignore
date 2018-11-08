@@ -24,3 +24,4 @@ build/
 /*.xlsx
 /*.properties
 /*.bak*
+external_lib_dev/*

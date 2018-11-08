@@ -58,10 +58,18 @@ dependencies {
     //SLF4j
     compile 'org.slf4j:slf4j-api:1.7.7'
 
-    //JDBC
+    //JDBC  //TODO: remove
     compile 'com.oracle:ojdbc6:11.2.0.3'
 
     //TEST
     testCompile 'junit:junit:4.11'
-    
+    testCompile 'com.oracle:ojdbc6:11.2.0.3'
+    testCompile 'mysql:mysql-connector-java:5.1.46'
+
+    /** Local File System으로부터 참조(*.jar) **/
+    compile fileTree(dir: 'external_lib', include: ['*.jar'])
+    compile fileTree(dir: 'external_lib_dev', include: ['*.jar'])
 }
+
+//- (JAR빌드시) 개발용 개발시에만 필요한(배포시에는 필요없는) 파일 제외하기
+jar.rootSpec.exclude( fileTree(dir: 'external_lib_dev', include: ['*.jar']).collect{ "**/${it.name}" } )
