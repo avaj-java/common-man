@@ -289,18 +289,25 @@ class QueryMan {
 
     QueryMan setConnection(Connection conn){
         this.conn = conn
-        return this
-    }
-    QueryMan setConnection(ConnectionGenerator connGen){
-        this.conn = connGen.generate()
+        setVendor(conn)
         return this
     }
     QueryMan setConnection(String vendor, String ip, String port, String db, String user, String password){
-        this.conn = new ConnectionGenerator(vendor:vendor, ip:ip, port:port, db:db, user:user, password:password).generate()
-        return this
+        return setConnection( new ConnectionGenerator(vendor:vendor, ip:ip, port:port, db:db, user:user, password:password) )
     }
     QueryMan setConnection(Map<String, String> dbInfoMap){
-        this.conn = new ConnectionGenerator(dbInfoMap).generate()
+        return setConnection( new ConnectionGenerator(dbInfoMap) )
+    }
+    QueryMan setConnection(ConnectionGenerator connGen){
+        this.conn = connGen.generate()
+        setVendor(conn)
+        return this
+    }
+
+    QueryMan setVendor(Connection conn){
+        if (conn){
+            this.vendor = conn.getMetaData().getDatabaseProductName()
+        }
         return this
     }
 
@@ -1697,42 +1704,94 @@ class QueryMan {
     String generatePageinateQuery(String query){
         Long pageStartNum = (pageNum -1) * pageSize
         Long pageEndNum = pageNum * pageSize
-        return """
-            SELECT * 
-            FROM ( 
-                SELECT A.*, ROWNUM as ROWSEQ 
-                FROM (
-                    ${query}                    
-                ) A 
-                WHERE ROWNUM <= ${pageEndNum}
-            ) 
-            WHERE ROWSEQ > ${pageStartNum} """
+        switch(vendor.toUpperCase()){
+            case 'MYSQL':
+                query = """
+                    SELECT *
+                      FROM(
+                          SELECT datas.*, @rn:=@rn + 1 as ROWSEQ
+                            FROM (
+                                ${query}
+                          ) as datas, (SELECT (@rn:=0)) as r
+                    ) as datas
+                    LIMIT ${pageStartNum}, ${pageSize}"""
+                break;
+            default:
+                query = """
+                    SELECT * 
+                    FROM ( 
+                        SELECT A.*, ROWNUM as ROWSEQ 
+                        FROM (
+                            ${query}                    
+                        ) A 
+                        WHERE ROWNUM <= ${pageEndNum}
+                    ) 
+                    WHERE ROWSEQ > ${pageStartNum} """
+                break;
+        }
+        return query
     }
 
     String generateCountQuery(query){
-        return """
-             SELECT COUNT(*) AS CNT
-             FROM (
-                ${query}
-             ) """
+        switch(vendor.toUpperCase()){
+            case 'MYSQL':
+                query = """
+                     SELECT COUNT(*) AS CNT
+                     FROM (
+                        ${query}
+                     ) as datas """
+                break;
+            default:
+                query = """
+                     SELECT COUNT(*) AS CNT
+                     FROM (
+                        ${query}
+                     ) """
+                break;
+        }
+        return query
     }
 
     String generateMaxQuery(String query, String keyAttribute){
         String keyColumnName = resultMap[keyAttribute] ?: keyAttribute
-        return """
-             SELECT MAX(${keyColumnName}) AS MAX_VALUE
-             FROM (
-                ${query}
-             ) """
+        switch(vendor.toUpperCase()){
+            case 'MYSQL':
+                query = """
+                     SELECT MAX(${keyColumnName}) AS MAX_VALUE
+                     FROM (
+                        ${query}
+                     ) as datas """
+                break
+            default:
+                query = """
+                     SELECT MAX(${keyColumnName}) AS MAX_VALUE
+                     FROM (
+                        ${query}
+                     ) """
+                break
+        }
+        return query
     }
 
     String generateMinQuery(String query, String keyAttribute){
         String keyColumnName = resultMap[keyAttribute] ?: keyAttribute
-        return """
-             SELECT MIN(${keyColumnName}) AS MIN_VALUE
-             FROM (
-                ${query}
-             ) """
+        switch(vendor.toUpperCase()){
+            case 'MYSQL':
+                query = """
+                     SELECT MIN(${keyColumnName}) AS MIN_VALUE
+                     FROM (
+                        ${query}
+                     ) as datas """
+                break
+            default:
+                query = """
+                     SELECT MIN(${keyColumnName}) AS MIN_VALUE
+                     FROM (
+                        ${query}
+                     ) """
+                break
+        }
+        return query
     }
 
 
@@ -1792,22 +1851,33 @@ class QueryMan {
 
         /** Default Setup DataType **/
         Integer length = columnSetupAnnotation ? columnSetupAnnotation.length() : 100
-        if (clazz == Date.class){
-            return "DATE"
 
-        }else if (clazz == String.class){
-            if (columnSetupAnnotation && columnSetupAnnotation.big())
-                return "CLOB"
-            else
-                return "VARCHAR2(${length})"
-
-        }else if (clazz == Boolean.class
-        || clazz == Integer.class || clazz == int
-        || clazz == Long.class || clazz == long){
-            return "NUMBER"
+        switch(vendor.toUpperCase()){
+            case 'MYSQL':
+                if (clazz == Date.class){
+                    return "DATETIME"
+                }else if (clazz == String.class){
+                    return "VARCHAR"
+                }else if (clazz == Boolean.class || clazz == Integer.class || clazz == int || clazz == Long.class || clazz == long){
+                    return "NUMERIC"
+                }
+                break;
+            default:
+                if (clazz == Date.class){
+                    return "DATE"
+                }else if (clazz == String.class){
+                    if (columnSetupAnnotation && columnSetupAnnotation.big())
+                        return "CLOB"
+                    else
+                        return "VARCHAR2(${length})"
+                }else if (clazz == Boolean.class || clazz == Integer.class || clazz == int || clazz == Long.class || clazz == long){
+                        return "NUMBER"
+                }
+                break;
         }
 
-        return "VARCHAR2(100)"
+        /** Else **/
+        return "VARCHAR2(${length})"
     }
 
 
