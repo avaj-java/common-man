@@ -1668,7 +1668,9 @@ class QueryMan {
                 String key = (matchingAttributeName ?: it.key) as String
                 String value = (clazzToSetValue ? parseValueToDB(it.value, clazzToSetValue) : it.value)
                 if (value != null){
-                    value = (clazzToSetValue == String) ? "'${value}'" : value
+                    String className = clazzToSetValue.getName()
+                    logger.info "${key} [Class] ${className}"
+                    value = (className == 'java.lang.String') ? "'${value}'" : value
                     conAnd << "${key} = ${value}"
                 }else{
                     conAnd << "${key} IS NULL"
