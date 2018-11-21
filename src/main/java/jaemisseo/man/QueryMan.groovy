@@ -1031,6 +1031,7 @@ class QueryMan {
         }
         if (resultType){
             resultMap = resultMap ?: generateMatchingMap(resultType)
+            typeMap = typeMap ?: generateTypeMap(resultType)
             tableName = tableName ?: getTableName(resultType)
             tableSetupMap = tableSetupMap ?: generateTableSetupMap(resultType)
             columnSetupMap = columnSetupMap ?: generateColumnSetupMap(resultType)
