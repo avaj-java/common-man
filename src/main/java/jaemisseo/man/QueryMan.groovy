@@ -5,7 +5,6 @@ import groovy.sql.GroovyRowResult
 import groovy.sql.Sql
 import jaemisseo.man.annotation.*
 import jaemisseo.man.util.ConnectionGenerator
-import oracle.sql.TIMESTAMP
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -267,6 +266,28 @@ class QueryMan {
         modeAutoCreateTable = false
         createTableCount = 0
         return this
+    }
+
+
+
+
+    /*************************
+     * Where EXP
+     *************************/
+    class WhereExp{
+        String exp
+        Map andMap
+
+        WhereExp set(String exp){
+            this.exp = exp;
+            return this;
+        }
+
+        WhereExp set(String exp, Map addMap){
+            this.exp = exp;
+            this.andMap = addMap;
+            return this;
+        }
     }
 
 
@@ -789,7 +810,7 @@ class QueryMan {
     }
 
 
-
+//    @SuppressWarnings("null")
     Closure getSelectDtoClosure(){
         Closure closure
         //CLOB To STRING
@@ -798,10 +819,11 @@ class QueryMan {
                 def rowDto = resultType.newInstance()
                 attribute.each{ String propNm ->
                     def value = row[resultMap[propNm]]
-                    if (value instanceof java.sql.Clob) {
+                    String className = value.getClass().getName()
+                    if (className == 'java.sql.Clob') {
                         rowDto[propNm] = getString(value as Clob)
-                    }else if (value instanceof TIMESTAMP){
-                        rowDto[propNm] = (value as TIMESTAMP).dateValue()
+                    }else if (className == 'Oracle.sql.TIMESTAMP'){
+                        rowDto[propNm] = value.dateValue()
                     }else{
                         rowDto[propNm] = value
                     }
@@ -825,25 +847,46 @@ class QueryMan {
     }
 
     boolean injectToValue(def value, Class clazzToSetValue, def rowDto, String fieldName){
-        String valueString = value.toString()
-        if (clazzToSetValue){
-            if (clazzToSetValue == String.class && !(value instanceof String)){
-                rowDto[fieldName] = value
-            }else if (clazzToSetValue == Integer.class || clazzToSetValue == int){
-                rowDto[fieldName] = Integer.parseInt(valueString)
-            }else if (clazzToSetValue == Long.class || clazzToSetValue == long){
-                rowDto[fieldName] = Long.parseLong(valueString)
-            }else if (clazzToSetValue == Boolean.class || clazzToSetValue == boolean){
-                rowDto[fieldName] = valueString ? ['Y','1','OK','YES'].contains(valueString.toUpperCase()) : false
-            }else if (clazzToSetValue == Date.class){
-                    rowDto[fieldName] = new java.text.SimpleDateFormat('yyyy-MM-dd HH:mm:ss.SSS').parse(value.toString())
-            }else{
-                rowDto[fieldName] = value
-            }
-        }else{
-            rowDto[fieldName] = value
-        }
+        rowDto[fieldName] = parseValueToJava(value, clazzToSetValue)
         return true
+    }
+
+    def parseValueToJava(def value, Class clazzToSetValue){
+        if (clazzToSetValue == null || value == null)
+            return value
+
+        String valueString = value.toString()
+        if (clazzToSetValue == String.class && !(value instanceof String)){
+            return value
+        }else if (clazzToSetValue == Integer.class || clazzToSetValue == int){
+            return Integer.parseInt(valueString)
+        }else if (clazzToSetValue == Long.class || clazzToSetValue == long){
+            return Long.parseLong(valueString)
+        }else if (clazzToSetValue == Boolean.class || clazzToSetValue == boolean){
+            return valueString ? ['Y','1','OK','YES'].contains(valueString.toUpperCase()) : false
+        }else if (clazzToSetValue == Date.class){
+            return new java.text.SimpleDateFormat('yyyy-MM-dd HH:mm:ss.SSS').parse(value.toString())
+        }else{
+            return value
+        }
+    }
+
+    def parseValueToDB(def value, Class clazzToSetValueToDB){
+        if ([String.class, Integer.class, Long.class, Short.class, Double.class].contains(clazzToSetValueToDB)){
+            return value
+        }else if ([Date.class].contains(clazzToSetValueToDB)){
+            if (vendor.toUpperCase() == 'ORACLE'){
+                Date date = value
+                return new java.sql.Timestamp(date.getTime())
+            }else{
+                return value
+            }
+
+        }else if ([Boolean.class, boolean].contains(clazzToSetValueToDB)){
+            return value ? 1: 0
+        }else{
+            return value?.toString()
+        }
     }
 
     Closure getMetaClosure(){
@@ -950,7 +993,6 @@ class QueryMan {
         }
     }
 
-
     void transaction(Closure closure){
         if (!defaultConn && conn)
             setDefaultConn(conn)
@@ -1035,24 +1077,28 @@ class QueryMan {
                 sql.rows(query, values).each {
                     result = it['CNT'] as Integer
                 }
+                this.modeCountAsInteger = false;
 
                 /** SELECT COUNT as LONG **/
             } else if (modeCountAsLong) {
                 sql.rows(query, values).each {
                     result = it['CNT'] as Long
                 }
+                this.modeCountAsLong = false;
 
                 /** SELECT MAX **/
             } else if (modeMax) {
                 sql.rows(query, values).each {
                     result = it['MAX_VALUE']
                 }
+                this.modeMax = false;
 
                 /** SELECT MIN **/
             } else if (modeMin) {
                 sql.rows(query, values).each {
                     result = it['MIN_VALUE']
                 }
+                this.modeMin = false;
 
             } else {
 
@@ -1295,21 +1341,7 @@ class QueryMan {
             attribute.each{ String propNm ->
                 if (!replaceMap[propNm]){
                     Field field = param.getClass().getDeclaredField(propNm)
-                    if ([String.class, Integer.class, Long.class, Short.class, Double.class].contains(field.type)){
-                        values << param[propNm]
-                    }else if ([Date.class].contains(field.type)){
-                        if (vendor.toUpperCase() == 'ORACLE'){
-                            Date date = param[propNm]
-                            values << new java.sql.Timestamp(date.getTime())
-                        }else{
-                            values << param[propNm]
-                        }
-
-                    }else if ([Boolean.class, boolean].contains(field.type)){
-                        values << param[propNm] ? 1: 0
-                    }else{
-                        values << param[propNm]?.toString()
-                    }
+                    values << parseValueToDB(param[propNm], field.type)
                 }
             }
         }
@@ -1353,13 +1385,17 @@ class QueryMan {
     }
 
     boolean commitAll(){
-        sqlMap.each{ String connectionId, Sql sql -> sql.commit() }
+        sqlMap.each{ String connectionId, Sql sql ->
+            sql.commit()
+        }
         logger.debug " - Completed Commit All"
         return true
     }
 
     boolean rollBackAll(){
-        sqlMap.each{ String connectionId, Sql sql -> sql.rollback() }
+        sqlMap.each{ String connectionId, Sql sql ->
+            sql.rollback()
+        }
         logger.debug " - Completed Rollback All"
         return true
     }
@@ -1384,7 +1420,7 @@ class QueryMan {
                 sql = new Sql(conn)
                 connMap[connectionId] = conn
                 sqlMap[connectionId] = sql
-                sql.connection.autoCommit = false
+                sql.connection.setAutoCommit(false)
             }
         }else{
             sql = new Sql(conn)
@@ -1397,8 +1433,9 @@ class QueryMan {
 
 
         //MODE - JUnit
-        if (modeJUnitTest)
-            sql.connection.autoCommit = false
+        if (modeJUnitTest){
+            sql.connection.setAutoCommit(false)
+        }
         recentConn = conn
         return true
     }
@@ -1606,7 +1643,7 @@ class QueryMan {
     List generateListWhere(){
         List listWhere = []
         if (where){
-            if (where instanceof String || where instanceof Map){
+            if (where instanceof String || where instanceof Map || where instanceof WhereExp){
                 where = [where]
             }
             if (where instanceof List){
@@ -1626,7 +1663,16 @@ class QueryMan {
         if (con instanceof Map){
             def conAnd = []
             con.each{
-                conAnd << "${it.key} = ${it.value}"
+                String matchingAttributeName = resultMap[it.key]
+                Class clazzToSetValue = typeMap[it.key]
+                String key = (matchingAttributeName ?: it.key) as String
+                String value = (clazzToSetValue ? parseValueToDB(it.value, clazzToSetValue) : it.value)
+                if (value != null){
+                    value = (clazzToSetValue == String) ? "'${value}'" : value
+                    conAnd << "${key} = ${value}"
+                }else{
+                    conAnd << "${key} IS NULL"
+                }
             }
             strCon = "${conAnd.join(' AND ')}"
         }else if (con instanceof String){
@@ -1636,6 +1682,12 @@ class QueryMan {
             con.each{
                 listWhere << parseWhere(it)
             }
+            strCon = listWhere.join(' AND ')
+        }else if (con instanceof WhereExp){
+            def listWhere = []
+            if (con.andMap)
+                listWhere << parseWhere(con.andMap)
+            listWhere << con.exp
             strCon = listWhere.join(' AND ')
         }
         return strCon
