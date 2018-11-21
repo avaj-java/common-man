@@ -258,7 +258,7 @@ class PropMan {
         if (url.toString().startsWith("jar:")){
             //Works in JAR
             try {
-                InputStream input = getClass().getResourceAsStream("/${resourcePath}")
+                InputStream input = getClass().getResourceAsStream("/${resourcePath}") ?: Thread.currentThread().getContextClassLoader().getResourceAsStream("/${resourcePath}");
                 file = File.createTempFile("tempfile", ".${fileNameExtension}")
                 OutputStream out = new FileOutputStream(file)
                 int len
