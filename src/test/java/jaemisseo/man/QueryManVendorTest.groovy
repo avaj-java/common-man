@@ -170,7 +170,6 @@ class QueryManVendorTest {
                 //Where FREE
                 assert queryman.setConnection(conn).setWhere(new QueryMan.WhereExp().set("COL2 = 'hello' || 'hoi' ")).selectCount(new QueryManTestBean()) == 0
                 assert queryman.setConnection(conn).setWhere(new QueryMan.WhereExp().set("COL2 IS NOT NULL", [col3: true])).selectCount(new QueryManTestBean()) == 2
-                throw new Exception();
             }
         }
     }
