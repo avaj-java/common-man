@@ -66,6 +66,9 @@ class VariableManTest {
                 number2: '2',
                 number3: '3',
                 number4: 4,
+                listTest: [
+                    1,2,3,4,111,2222,1155,'Hehehe'
+                ]
         ])
 //        .setModeDebug(true)
     }
@@ -73,6 +76,12 @@ class VariableManTest {
     @Test
     void usage1(){
         println varman.parse('site-option-${if(_lib.dir, starts, "D:/dev/workspaces1/").add("test").elseif(_lib.dir, starts, "D:/dev_by_sj/workspaces2/").add("real").else().add("dev")}.properties')
+    }
+
+    @Test
+    void test_listValue(){
+        println varman.parse('test__${listTest}__test')
+        assert varman.parse('-t ${listTest().join(" -t ")} _test') == '-t 1 -t 2 -t 3 -t 4 -t 111 -t 2222 -t 1155 -t Hehehe _test'
     }
 
 

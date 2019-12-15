@@ -17,7 +17,7 @@ import java.util.regex.Pattern
  */
 class VariableMan {
 
-    Logger logger = LoggerFactory.getLogger(this.getClass());
+    static final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     /*************************
      * CONSTRUCTORS
@@ -100,6 +100,7 @@ class VariableMan {
         String originalCode = ''
         String valueCode = ''
         String substitutes = ''
+        Object originalValue = null
         String parsedValue = ''
         byte[] bytes
         int startIndex = 0
@@ -134,7 +135,7 @@ class VariableMan {
         }
     }
 
-    Map<String, String> variableStringMap = [:]
+    Map<String, Object> variableStringMap = [:]
     Map<String, Closure> variableClosureMap = [:]
     Map<String, Closure> funcMap = [:]
     Map<String, Closure> conditionFuncMap = [:]
@@ -153,8 +154,8 @@ class VariableMan {
     /* Pattern - Member */
     private String patternToSeperateMemebers = ',(?=(?:[^"]*"[^"]*")*[^"]*$)(?=(?:[^\']*\'[^\']*\')*[^\']*$)'
     private String patternToGetMembers = '[(][^(]*[^)]*[)]'   //TODO: addVariable()에 들어가는 파라미터르 인식하기 위해서는 매치패턴의 업데이트 필요
-    private String charDoubleQuote = '"'
-    private String charSingleQuote = "'"
+    static private String charDoubleQuote = '"'
+    static private String charSingleQuote = "'"
 
     /* Pattern - Func */
     private String patternToSeperateFuncs = '\\s*[.](?![^(]*[)])\\s*'
@@ -241,7 +242,7 @@ class VariableMan {
      */
     VariableMan putVariables(Map<String, Object> variableStringMapToPut){
         if (variableStringMapToPut){
-            if (variableStringMapToPut.values().findAll{ it instanceof Map }){
+            if (variableStringMapToPut.values().find{ it instanceof Map || it instanceof List }){
                 logger.trace('Add Variable (from MultiDepth Map)')
                 variableStringMapToPut = toPropertiesMap(variableStringMapToPut)
             }else{
@@ -258,12 +259,12 @@ class VariableMan {
         return this
     }
 
-    static Map<String, String> toPropertiesMap(Map parameters){
-        Map<String, List<String>> concatKeyStringValueMap = [:]
+    static Map<String, Object> toPropertiesMap(Map parameters){
+        Map<String, Object> concatKeyStringValueMap = [:]
         return toPropertiesMap(parameters, '', concatKeyStringValueMap)
     }
 
-    static Map<String, String> toPropertiesMap(Map parameters, String prevKey, Map<String, String> concatKeyStringValueMap){
+    static Map<String, Object> toPropertiesMap(Map parameters, String prevKey, Map<String, String> concatKeyStringValueMap){
         parameters.keySet().each{ String key ->
             String concatKey = (prevKey) ? prevKey + '.' + key : key
             def value = parameters[key]
@@ -627,7 +628,7 @@ class VariableMan {
         return replacement
     }
 
-    String parseMember(String member, Map variableStringMap, Map variableClosureMap){
+    static String parseMember(String member, Map variableStringMap, Map variableClosureMap){
         try{
             if (member){
                 if (member.length() > 1
@@ -751,7 +752,7 @@ class VariableMan {
      *
      * @return
      */
-    Map<String, String> getBasicVariableMap(){
+    Map<String, Object> getBasicVariableMap(){
         InetAddress ip = InetAddress.getLocalHost()
         return [
                 '_os.name': System.getProperty('os.name'),
@@ -791,7 +792,7 @@ class VariableMan {
      */
     Map<String, Closure> getBasicVariableClosureMap(){
         return [
-                'DATE': { OnePartObject it, Map<String, String> vsMap, Map<String, Closure> vcMap ->
+                'DATE': { OnePartObject it, Map<String, Object> vsMap, Map<String, Closure> vcMap ->
                     String[] members = it.members
                     String format = (members && members[0]) ? members[0] : 'yyyyMMdd'
                     if (format == 'long'){
@@ -802,7 +803,7 @@ class VariableMan {
                         it.length = format.length()
                     }
                 },
-                'RANDOM': { OnePartObject it, Map<String, String> vsMap, Map<String, Closure> vcMap ->
+                'RANDOM': { OnePartObject it, Map<String, Object> vsMap, Map<String, Closure> vcMap ->
                     String[] members = it.members
                     int length = (members && members[0]) ? Integer.parseInt(members[0]) : 0
                     String numStr = "1"
@@ -824,7 +825,7 @@ class VariableMan {
                     it.substitutes = (1..count).collect{ '\n' }.join('')
                     it.length = it.substitutes.length()
                 },
-                'PICK': { OnePartObject it, Map<String, String> vsMap, Map<String, Closure> vcMap ->
+                'PICK': { OnePartObject it, Map<String, Object> vsMap, Map<String, Closure> vcMap ->
                     if (it.members.size() > 1) {
                         String arg1 = parseMember(it.members[0], vsMap, vcMap)
                         Integer lastIndex = it.members.length -1
@@ -850,7 +851,7 @@ class VariableMan {
                         it.length = it.substitutes.length()
                     }
                 },
-                'PICKNEXT': { OnePartObject it, Map<String, String> vsMap, Map<String, Closure> vcMap ->
+                'PICKNEXT': { OnePartObject it, Map<String, Object> vsMap, Map<String, Closure> vcMap ->
                     if (it.members.size() > 1) {
                         String arg1 = parseMember(it.members[0], vsMap, vcMap)
                         Integer lastIndex = it.members.length -1
@@ -876,7 +877,7 @@ class VariableMan {
                         it.length = it.substitutes.length()
                     }
                 },
-                'PICKNEXTOF': { OnePartObject it, Map<String, String> vsMap, Map<String, Closure> vcMap ->
+                'PICKNEXTOF': { OnePartObject it, Map<String, Object> vsMap, Map<String, Closure> vcMap ->
                     if (it.members.size() > 1) {
                         String arg1 = parseMember(it.members[0], vsMap, vcMap)
                         Integer lastIndex = it.members.length -1
@@ -918,7 +919,7 @@ class VariableMan {
      */
     Map<String, Closure> getBasicFuncMap(){
         return [
-                'START': { OnePartObject it, Map<String, String> vsMap, Map<String, Closure> vcMap ->
+                'START': { OnePartObject it, Map<String, Object> vsMap, Map<String, Closure> vcMap ->
                     if (it.length && it.members ){
                         long nextSeq = Long.parseLong(it.substitutes)
                         long standardStartNum = Long.parseLong(it.members[0])
@@ -926,7 +927,7 @@ class VariableMan {
                             it.substitutes = it.members[0]
                     }
                 },
-                'LEFT': { OnePartObject it, Map<String, String> vsMap, Map<String, Closure> vcMap ->
+                'LEFT': { OnePartObject it, Map<String, Object> vsMap, Map<String, Closure> vcMap ->
                     if (it.length && it.members ){
                         int diff = -1
                         int tryRemoveIdx = 0
@@ -946,7 +947,7 @@ class VariableMan {
                         }
                     }
                 },
-                'RIGHT': { OnePartObject it, Map<String, String> vsMap, Map<String, Closure> vcMap ->
+                'RIGHT': { OnePartObject it, Map<String, Object> vsMap, Map<String, Closure> vcMap ->
                     if (it.length && it.members ){
                         int diff = -1
                         int tryRemoveIdx = 0
@@ -970,14 +971,14 @@ class VariableMan {
                 /*************************
                  * Condition
                  *************************/
-                'ERROR': { OnePartObject it, Map<String, String> vsMap, Map<String, Closure> vcMap ->
+                'ERROR': { OnePartObject it, Map<String, Object> vsMap, Map<String, Closure> vcMap ->
                     if (it.length && it.members ){
                         String errorNm = it.members[0].toUpperCase()
                         if (errorNm.equals('OVER') && it.isOver)
                             throw new Exception( "${VAR2} - Rule is '${it.partValue}', But ${it.valueCode}'s value is ${it.overValue}", new Throwable(" Seted Rule is '${it.partValue}', But ${it.valueCode}'s value is ${it.overValue}") )
                     }
                 },
-                'EXIST': { OnePartObject it, Map<String, String> vsMap, Map<String, Closure> vcMap ->
+                'EXIST': { OnePartObject it, Map<String, Object> vsMap, Map<String, Closure> vcMap ->
                     if (!it.substitutes)
                         throw new ConditionNotMatchedFinishException()
                 },
@@ -985,23 +986,23 @@ class VariableMan {
                 /*************************
                  * Convert
                  *************************/
-                'LOWER': { OnePartObject it, Map<String, String> vsMap, Map<String, Closure> vcMap ->
+                'LOWER': { OnePartObject it, Map<String, Object> vsMap, Map<String, Closure> vcMap ->
                     it.substitutes = (it.substitutes) ? it.substitutes.toLowerCase() : ""
                 },
-                'UPPER': { OnePartObject it, Map<String, String> vsMap, Map<String, Closure> vcMap ->
+                'UPPER': { OnePartObject it, Map<String, Object> vsMap, Map<String, Closure> vcMap ->
                     it.substitutes = (it.substitutes) ? it.substitutes.toUpperCase() : ""
                 },
-                'NUMBERONLY': { OnePartObject it, Map<String, String> vsMap, Map<String, Closure> vcMap ->
+                'NUMBERONLY': { OnePartObject it, Map<String, Object> vsMap, Map<String, Closure> vcMap ->
                     it.substitutes = (it.substitutes) ? it.substitutes.replaceAll("[^0-9.]", "") : ""
                 },
-                'NVL': { OnePartObject it, Map<String, String> vsMap, Map<String, Closure> vcMap ->
+                'NVL': { OnePartObject it, Map<String, Object> vsMap, Map<String, Closure> vcMap ->
                     if (!it.substitutes && it.members){
                         String nvlValue = it.members[0]
                         if (nvlValue)
                             it.substitutes = nvlValue
                     }
                 },
-                'DATEFORMAT': { OnePartObject it, Map<String, String> vsMap, Map<String, Closure> vcMap ->
+                'DATEFORMAT': { OnePartObject it, Map<String, Object> vsMap, Map<String, Closure> vcMap ->
                     String beforeDateFormat
                     String afterDateFormat
                     if (it.members.size() == 1){
@@ -1019,26 +1020,26 @@ class VariableMan {
                 /*************************
                  * Append
                  *************************/
-                'ADD': { OnePartObject it, Map<String, String> vsMap, Map<String, Closure> vcMap ->
+                'ADD': { OnePartObject it, Map<String, Object> vsMap, Map<String, Closure> vcMap ->
                     if (it.members){
                         String addtion = parseMember(it.members[0], vsMap, vcMap)
                         it.substitutes = (it.substitutes ?: '') + addtion
                     }
                 },
-                'ADDBEFORE': { OnePartObject it, Map<String, String> vsMap, Map<String, Closure> vcMap ->
+                'ADDBEFORE': { OnePartObject it, Map<String, Object> vsMap, Map<String, Closure> vcMap ->
                     if (it.members){
                         String addtion = parseMember(it.members[0], vsMap, vcMap)
                         it.substitutes = addtion + (it.substitutes ?: '')
                     }
                 },
-                'ADDVARIABLE': { OnePartObject it, Map<String, String> vsMap, Map<String, Closure> vcMap ->
+                'ADDVARIABLE': { OnePartObject it, Map<String, Object> vsMap, Map<String, Closure> vcMap ->
                     if (it.members){
                         String addtion = parseMember(it.members[0], vsMap, vcMap)
                         String parsedString = new VariableMan(vsMap).parse( '${' +addtion+ '}' )
                         it.substitutes = (it.substitutes ?: '') + parsedString
                     }
                 },
-                'ADDVARIABLEBEFORE': { OnePartObject it, Map<String, String> vsMap, Map<String, Closure> vcMap ->
+                'ADDVARIABLEBEFORE': { OnePartObject it, Map<String, Object> vsMap, Map<String, Closure> vcMap ->
                     if (it.members){
                         String addtion = parseMember(it.members[0], vsMap, vcMap)
                         String parsedString = new VariableMan(vsMap).parse(addtion)
@@ -1049,25 +1050,34 @@ class VariableMan {
                 /*************************
                  * Replace
                  *************************/
-                'REPLACE': { OnePartObject it, Map<String, String> vsMap, Map<String, Closure> vcMap ->
+                'REPLACE': { OnePartObject it, Map<String, Object> vsMap, Map<String, Closure> vcMap ->
                     if (it.members && it.members.size() == 2){
                         String target = parseMember(it.members[0], vsMap, vcMap)
                         String replacement = parseMember(it.members[1], vsMap, vcMap)
                         it.substitutes = (it.substitutes) ? it.substitutes.replace(target, replacement) : ""
                     }
                 },
-                'REPLACEALL': { OnePartObject it, Map<String, String> vsMap, Map<String, Closure> vcMap ->
+                'REPLACEALL': { OnePartObject it, Map<String, Object> vsMap, Map<String, Closure> vcMap ->
                     if (it.members && it.members.size() == 2){
                         String target = parseMember(it.members[0], vsMap, vcMap)
                         String replacement = parseMember(it.members[1], vsMap, vcMap)
                         it.substitutes = (it.substitutes) ? it.substitutes.replaceAll(target, replacement) : ""
                     }
                 },
-                'REPLACEFIRST': { OnePartObject it, Map<String, String> vsMap, Map<String, Closure> vcMap ->
+                'REPLACEFIRST': { OnePartObject it, Map<String, Object> vsMap, Map<String, Closure> vcMap ->
                     if (it.members && it.members.size() == 2){
                         String target = parseMember(it.members[0], vsMap, vcMap)
                         String replacement = parseMember(it.members[1], vsMap, vcMap)
                         it.substitutes = (it.substitutes) ? it.substitutes.replaceFirst(target, replacement) : ""
+                    }
+                },
+                'JOIN': { OnePartObject it, Map<String, Object> vsMap, Map<String, Closure> vcMap ->
+                    if (it.substitutes && it.members){
+                        String seperator = parseMember(it.members[0], vsMap, vcMap)
+                        Object rawObjectValue = (it.originalValue != null) ? it.originalValue : vsMap[it.originalCode]
+                        if (rawObjectValue instanceof List){
+                            it.substitutes = rawObjectValue.join(seperator)
+                        }
                     }
                 },
         ]
@@ -1188,7 +1198,7 @@ class VariableMan {
             return false
     }
 
-    private def getIgnoreCase(Map map, String key){
+    private static def getIgnoreCase(Map map, String key){
         key = key.toUpperCase()
         List resultKeys = map.keySet().findAll{ String itKey ->
             itKey.toUpperCase().equals(key)
