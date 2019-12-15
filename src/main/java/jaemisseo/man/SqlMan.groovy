@@ -2,6 +2,7 @@ package jaemisseo.man
 
 import groovy.sql.Sql
 import jaemisseo.man.bean.SqlSetup
+import jaemisseo.man.util.ConnectionGenerator
 import jaemisseo.man.util.Util
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -201,6 +202,16 @@ class SqlMan extends SqlAnalMan{
      * CHECK BEFORE
      *************************/
     SqlMan checkBefore(SqlSetup localOpt){
+        if ( ![
+                ConnectionGenerator.ORACLE,
+                ConnectionGenerator.TIBERO,
+                ConnectionGenerator.POSTGRESQL
+            ].contains( localOpt.vendor?.toUpperCase()?:'' )
+        ){
+            logger.warn("[Check Before] was not supported for ${localOpt.vendor}")
+            return this
+        }
+
         try {
             def existObjectList
             def existTablespaceList
@@ -211,26 +222,25 @@ class SqlMan extends SqlAnalMan{
              * Collecting Information
              **/
             logger.info '- Collecting OBJECT from DB...'
-            Map data = Util.startPrinter(3, 20, localOpt.modeProgressBar)
+            Map progressData = Util.startPrinter(3, 20, localOpt.modeProgressBar)
             // - Collecting OBJECT
-//            existObjectList = sql.rows("SELECT OBJECT_NAME, OBJECT_TYPE, OWNER AS SCHEME FROM ALL_OBJECTS")
-            data.count++
-            existObjectList = sql.rows("SELECT OBJECT_NAME, OBJECT_TYPE FROM USER_OBJECTS")
+            progressData.count++
+            existObjectList = extractObjectList(localOpt)
             // - Collecting TABLESPACE
-            data.count++
+            progressData.count++
             def resultsForTablespace = analysisResultList.findAll{ it.commandType.equalsIgnoreCase("CREATE") && it.objectType.equalsIgnoreCase("TABLESPACE") }
             if (resultsForTablespace){
-                data.stringList << '- Collecting TABLESPACE from DB...'
-                existTablespaceList = sql.rows("SELECT TABLESPACE_NAME AS OBJECT_NAME, 'TABLESPACE' AS OBJECT_TYPE FROM USER_TABLESPACES")
+                progressData.stringList << '- Collecting TABLESPACE from DB...'
+                existTablespaceList = extracTablespaceList(localOpt)
             }
             // - Collecting USER
-            data.count++
+            progressData.count++
             def resultsForUser = analysisResultList.findAll{ it.commandType.equalsIgnoreCase("CREATE") && it.objectType.equalsIgnoreCase("USER") }
             if (resultsForUser){
-                data.stringList << '- Collecting USER from DB...'
-                existUserList = sql.rows("SELECT USERNAME AS OBJECT_NAME, 'USER' AS OBJECT_TYPE FROM ALL_USERS")
+                progressData.stringList << '- Collecting USER from DB...'
+                existUserList = extractUserList(localOpt)
             }
-            Util.endWorker(data)
+            Util.endWorker(progressData)
 
             /**
              * Checking
@@ -299,6 +309,36 @@ class SqlMan extends SqlAnalMan{
         return this
     }
 
+    private def extractObjectList(SqlSetup sqlSetup){
+        switch (sqlSetup.vendor?.toUpperCase()){
+            case ConnectionGenerator.POSTGRESQL:
+                return sql.rows("SELECT tablename AS OBJECT_NAME, 'TABLE' AS OBJECT_TYPE FROM pg_tables")
+            default:
+                return sql.rows("SELECT OBJECT_NAME, OBJECT_TYPE FROM USER_OBJECTS")
+                break
+        }
+    }
+
+    private def extracTablespaceList(SqlSetup sqlSetup){
+        switch (sqlSetup.vendor?.toUpperCase()){
+            case ConnectionGenerator.POSTGRESQL:
+                return sql.rows("SELECT spcname AS OBJECT_NAME, 'TABLESPACE' AS OBJECT_TYPE FROM pg_tablespace")
+            default:
+                return sql.rows("SELECT TABLESPACE_NAME AS OBJECT_NAME, 'TABLESPACE' AS OBJECT_TYPE FROM USER_TABLESPACES")
+                break
+        }
+    }
+
+    private def extractUserList(SqlSetup sqlSetup){
+        switch (sqlSetup.vendor?.toUpperCase()){
+            case ConnectionGenerator.POSTGRESQL:
+                return sql.rows("SELECT usename AS OBJECT_NAME, 'USER' AS OBJECT_TYPE FROM pg_user")
+            default:
+                return sql.rows("SELECT USERNAME AS OBJECT_NAME, 'USER' AS OBJECT_TYPE FROM ALL_USERS")
+                break
+        }
+    }
+
 
 
 
@@ -315,7 +355,7 @@ class SqlMan extends SqlAnalMan{
         Util.eachWithTimeProgressBar(m, 20, opt.modeProgressBar) { data ->
             String query = data.item
             int count = data.count
-            SqlObject sqlObj = getAnalyzedObject(query)
+            SqlObject sqlObj = getAnalyzedObject(query, opt)
             sqlObj.sqlFileName = sqlFileName
             sqlObj.seq = count
             if (sqlObj.commandType == 'PLSQL'){

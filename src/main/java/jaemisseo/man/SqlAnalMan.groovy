@@ -1,6 +1,7 @@
 package jaemisseo.man
 
 import jaemisseo.man.bean.SqlSetup
+import jaemisseo.man.util.ConnectionGenerator
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -38,6 +39,7 @@ class SqlAnalMan {
         int objectTypeIdx
 
         String schemeName
+        String ownerName
         String password
         String datafileName
         String tablespaceName
@@ -56,6 +58,7 @@ class SqlAnalMan {
         int tempTablespaceNameIdx
         List<Integer> quotaNameIdxs = []
         int userNameIdx
+        int ownerNameIdx
         List<Integer> tableNameIdxs = []
         int indexNameIdx
         int viewNameIdx
@@ -79,7 +82,7 @@ class SqlAnalMan {
 
 
     // Analysis Sql Query
-    SqlObject getAnalyzedObject(String query){
+    SqlObject getAnalyzedObject(String query, SqlSetup opt){
         SqlObject sqlObj = new SqlObject()
 //        String queryToCompare = query.replace(")", " ) ").replace("(", " ( ").replaceAll("[,]", " , ").replaceAll("[;]", " ;").replaceAll(/\s{2,}/, " ")
         String sp = "{#-%}"
@@ -104,34 +107,34 @@ class SqlAnalMan {
 
         switch (sqlObj.commandType){
             case 'CREATE':
-                sqlObj = analCreate(sqlObj)
+                sqlObj = analCreate(sqlObj, opt)
                 break
             case 'ALTER':
-                sqlObj = analAlter(sqlObj)
+                sqlObj = analAlter(sqlObj, opt)
                 break
             case 'INSERT':
-                sqlObj = analInsert(sqlObj)
+                sqlObj = analInsert(sqlObj, opt)
                 break
             case 'UPDATE':
-                sqlObj = analUpdate(sqlObj)
+                sqlObj = analUpdate(sqlObj, opt)
                 break
             case 'COMMENT':
-                sqlObj = analComment(sqlObj)
+                sqlObj = analComment(sqlObj, opt)
                 break
             case 'GRANT':
-                sqlObj = analGrant(sqlObj)
+                sqlObj = analGrant(sqlObj, opt)
                 break
             case 'PLSQL':
-                sqlObj = analPlsql(sqlObj)
+                sqlObj = analPlsql(sqlObj, opt)
                 break
             case 'SELECT':
-                sqlObj = analSelect(sqlObj)
+                sqlObj = analSelect(sqlObj, opt)
                 break
             case 'DELETE':
-                sqlObj = analDelete(sqlObj)
+                sqlObj = analDelete(sqlObj, opt)
                 break
             case 'DROP':
-                sqlObj = analDrop(sqlObj)
+                sqlObj = analDrop(sqlObj, opt)
                 break
             default:
                 break
@@ -139,7 +142,7 @@ class SqlAnalMan {
         return sqlObj
     }
 
-    String getObjectType(query){
+    String getObjectType(String query){
         String objectType = ''
         if (getMatchedList(query, getSqlPattern(SqlMan.CREATE_TABLE)).size()){
             objectType = 'TABLE'
@@ -175,7 +178,7 @@ class SqlAnalMan {
     }
 
 
-    Matcher getMatchedList(content, pattern){
+    Matcher getMatchedList(String content, pattern){
         String querys = removeNewLine(removeAnnotation(content))
         Pattern p = Pattern.compile(pattern, Pattern.CASE_INSENSITIVE)
         Matcher m = p.matcher(querys)
@@ -279,7 +282,7 @@ class SqlAnalMan {
     /*************************
      *  CREATE
      *************************/
-    SqlObject analCreate(SqlObject obj){
+    SqlObject analCreate(SqlObject obj, SqlSetup opt){
         List<String> words = obj.arrayToCompare
         String objectType = getObjectType(obj.query)
         words.eachWithIndex{ String word, int idx ->
@@ -356,8 +359,13 @@ class SqlAnalMan {
                         obj.datafileNameIdx = idx + 1
                     break
                 case 'USER':
-                    if (word.equalsIgnoreCase("IDENTIFIED"))
-                        obj.passwordIdx = idx + 2
+                    if ( (opt.vendor?:'').equalsIgnoreCase(ConnectionGenerator.POSTGRESQL) ){
+                        if (word.equalsIgnoreCase("PASSWORD"))
+                            obj.passwordIdx = idx + 1
+                    }else{
+                        if (word.equalsIgnoreCase("IDENTIFIED"))
+                            obj.passwordIdx = idx + 2
+                    }
                     break
                 default:
                     break
@@ -400,7 +408,7 @@ class SqlAnalMan {
     /*************************
      *  ALTER
      *************************/
-    SqlObject analAlter(SqlObject obj){
+    SqlObject analAlter(SqlObject obj, SqlSetup opt){
         List<String> words = obj.arrayToCompare
         obj.objectTypeIdx = 1
         obj.objectNameIdx = 2
@@ -427,6 +435,9 @@ class SqlAnalMan {
             }
             switch (obj.objectType){
                 case 'TABLE':
+                    if (word.equalsIgnoreCase("OWNER"))
+                        obj.ownerNameIdx = idx + 2
+                        obj.ownerName = words[obj.ownerNameIdx]
                     break
                 case 'INDEX':
                     if (word.equalsIgnoreCase("ON") && words[idx-1].equalsIgnoreCase(words[obj.objectNameIdx]))
@@ -443,8 +454,13 @@ class SqlAnalMan {
                         obj.datafileNameIdx = idx + 1
                     break
                 case 'USER':
-                    if (word.equalsIgnoreCase("IDENTIFIED"))
-                        obj.passwordIdx = idx + 2
+                    if ( (opt.vendor?:'').equalsIgnoreCase(ConnectionGenerator.POSTGRESQL) ){
+                        if (word.equalsIgnoreCase("PASSWORD"))
+                            obj.passwordIdx = idx + 1
+                    }else{
+                        if (word.equalsIgnoreCase("IDENTIFIED"))
+                            obj.passwordIdx = idx + 2
+                    }
                     break
                 default:
                     break
@@ -485,7 +501,7 @@ class SqlAnalMan {
     /*************************
      *  INSERT
      *************************/
-    SqlObject analInsert(SqlObject obj){
+    SqlObject analInsert(SqlObject obj, SqlSetup opt){
         List<String> words = obj.arrayToCompare
         obj.objectType = 'TABLE'
         words.eachWithIndex{ String word, int idx ->
@@ -529,7 +545,7 @@ class SqlAnalMan {
     /*************************
      *  UPDATE
      *************************/
-    SqlObject analUpdate(SqlObject obj){
+    SqlObject analUpdate(SqlObject obj, SqlSetup opt){
         List<String> words = obj.arrayToCompare
         obj.objectType = 'TABLE'
         obj.objectNameIdx = 1
@@ -570,7 +586,7 @@ class SqlAnalMan {
     /*************************
      *  SELECT
      *************************/
-    SqlObject analSelect(SqlObject obj){
+    SqlObject analSelect(SqlObject obj, SqlSetup opt){
         List<String> words = obj.arrayToCompare
         obj.objectType = ''
         words.eachWithIndex{ String word, int idx ->
@@ -609,7 +625,7 @@ class SqlAnalMan {
     /*************************
      *  DELETE
      *************************/
-    SqlObject analDelete(SqlObject obj){
+    SqlObject analDelete(SqlObject obj, SqlSetup opt){
         List<String> words = obj.arrayToCompare
         obj.objectType = 'TABLE'
         words.eachWithIndex{ String word, int idx ->
@@ -655,7 +671,7 @@ class SqlAnalMan {
     /*************************
      *  DROP
      *************************/
-    SqlObject analDrop(SqlObject obj){
+    SqlObject analDrop(SqlObject obj, SqlSetup opt){
         List<String> words = obj.arrayToCompare
         words.eachWithIndex{ String word, int idx ->
             if (idx == 2){
@@ -678,7 +694,7 @@ class SqlAnalMan {
     /*************************
      *  COMMENT
      *************************/
-    SqlObject analComment(SqlObject obj){
+    SqlObject analComment(SqlObject obj, SqlSetup opt){
         List<String> words = obj.arrayToCompare
         words.eachWithIndex{ String word, int idx ->
             if (word.equalsIgnoreCase('ON')){
@@ -713,7 +729,7 @@ class SqlAnalMan {
     /*************************
      *  GRANT
      *************************/
-    SqlObject analGrant(SqlObject obj){
+    SqlObject analGrant(SqlObject obj, SqlSetup opt){
         List<String> words = obj.arrayToCompare
         obj.objectType = 'USER'
         words.eachWithIndex{ String word, int idx ->
@@ -728,7 +744,7 @@ class SqlAnalMan {
     /*************************
      *  PLSQL
      *************************/
-    SqlObject analPlsql(SqlObject obj){
+    SqlObject analPlsql(SqlObject obj, SqlSetup opt){
         List<String> words = obj.arrayToCompare
         obj.objectType = 'PLSQL'
         return obj
@@ -777,6 +793,13 @@ class SqlAnalMan {
                     }
                 }
             }
+            if (obj.ownerName){
+                target = obj.ownerName
+                logger.info "OWNER!!!! (${opt.replaceOwner}) ==> ${obj.ownerName} ${obj.ownerNameIdx}"
+                ifReturn(opt.replaceOwner, target).each{ String replaceStr ->
+                    words[obj.ownerNameIdx] = replaceStr
+                }
+            }
             if (obj.tablespaceNameIdx){
                 target = words[obj.tablespaceNameIdx]
                 ifReturn(opt.replaceTablespace, target).each{ String replaceStr ->
@@ -817,8 +840,13 @@ class SqlAnalMan {
                 target = words[obj.passwordIdx]
                 target = target.substring(1, target.length() -1)
                 ifReturn(opt.replacePassword, target).each{ String replaceStr ->
-                    words[obj.passwordIdx] = "\"${replaceStr}\"" as String
-                    obj.password = "\"${replaceStr}\"" as String
+                    String wordWithQuote
+                    if ( (opt.vendor?:'').equalsIgnoreCase(ConnectionGenerator.POSTGRESQL) ){
+                        wordWithQuote = "'${replaceStr}'" as String
+                    }else{
+                        wordWithQuote = "\"${replaceStr}\"" as String
+                    }
+                    words[obj.passwordIdx] = obj.password = wordWithQuote
                 }
             }
             if (obj.commandType.equalsIgnoreCase("COMMENT")){
@@ -937,16 +965,16 @@ class SqlAnalMan {
 
 
 
-    String removeAnnotation(query){
+    String removeAnnotation(String query){
         return query.replaceAll(/\-\-.*[\r\n;]/, " ")
     }
-    String removeNewLine(query){
+    String removeNewLine(String query){
         return query.replaceAll(/[\r\n]/, " ")
     }
-    String removeLastSemicoln(query){
+    String removeLastSemicoln(String query){
         return query.replaceAll(/[;]\s*$/, '')
     }
-    String removeLastSlash(query){
+    String removeLastSlash(String query){
         return query.replaceAll(/[\/]\s*$/, '')
     }
 
