@@ -54,6 +54,7 @@ class VariableMan {
         putVariableClosures(getBasicVariableClosureMap())
         putFuncs(getBasicFuncMap())
         putConditionFuncs(getBasicConditionFuncMap())
+        putConditionComputerFuncs(getBasicConditionComputerFuncMap())
     }
 
     /**
@@ -139,6 +140,7 @@ class VariableMan {
     Map<String, Closure> variableClosureMap = [:]
     Map<String, Closure> funcMap = [:]
     Map<String, Closure> conditionFuncMap = [:]
+    Map<String, Closure> conditionComputerFuncMap = [:]
 
     boolean modeDebug = false
     boolean modeMustExistCodeRule = true
@@ -321,6 +323,21 @@ class VariableMan {
         this.conditionFuncMap.putAll(funcMapToPut)
         return this
     }
+
+    VariableMan putConditionComputerFuncs(Map<Object, Closure> funcMapToPut){
+        funcMapToPut.each{ key, value ->
+            if (key instanceof String){
+                this.conditionComputerFuncMap.put(key, value)
+            }else if(key instanceof List<String>){
+                key.each{k ->
+                    this.conditionComputerFuncMap.put(k, value)
+                }
+            }
+        }
+        return this
+    }
+
+
 
     /**
      * You Can Set CharacterSet
@@ -536,6 +553,8 @@ class VariableMan {
                 funcNm = funcNm.toUpperCase()
                 partObj.funcNm = funcNm
                 partObj.members = getMemebersFromOneFunc(oneFunc)
+
+                //- Check ConditionFUnc
                 if ( getIgnoreCase(conditionFuncMap, funcNm) ) {
                     try{
                         runConditionFunc(partObj, variableStringMap, variableClosureMap)
@@ -1003,6 +1022,8 @@ class VariableMan {
                     }
                 },
                 'DATEFORMAT': { OnePartObject it, Map<String, Object> vsMap, Map<String, Closure> vcMap ->
+                    if (!it.substitutes)
+                        return
                     String beforeDateFormat
                     String afterDateFormat
                     if (it.members.size() == 1){
@@ -1013,7 +1034,11 @@ class VariableMan {
                         beforeDateFormat = parseMember(it.members[0], vsMap, vcMap)
                         afterDateFormat = parseMember(it.members[1], vsMap, vcMap)
                         Date dateValue = new SimpleDateFormat(beforeDateFormat).parse(it.substitutes)
-                        it.substitutes = new SimpleDateFormat(afterDateFormat).format(dateValue)
+                        if (afterDateFormat.equals("long")){
+                            it.substitutes = dateValue.getTime()
+                        }else{
+                            it.substitutes = new SimpleDateFormat(afterDateFormat).format(dateValue)
+                        }
                     }
                 },
 
@@ -1124,6 +1149,83 @@ class VariableMan {
         ]
     }
 
+    Map<List<String>, Closure> getBasicConditionComputerFuncMap(){
+        return [
+                /*************************
+                 * Condition Computer
+                 *************************/
+                /***************
+                 * - A: value
+                 * - B: condition value
+                 * - EX) if(A, computer, B)
+                 ***************/
+                ['EQUALS', '==']: { valA, valB ->
+                    return (valA != null) ? valA.equals(valB) : false;
+                },
+
+                /***************
+                 * - A: value
+                 * - B: condition value
+                 * - EX) if(A, computer, B)
+                 ***************/
+                ['STARTS', '^']: { valA, valB ->
+                    return (valA != null) ? valA.startsWith(valB) : false;
+                },
+
+                /***************
+                 * - A: value
+                 * - B: condition value
+                 * - EX) if(A, computer, B)
+                 ***************/
+                ['ENDS']: { valA, valB ->
+                    return (valA != null) ? valA.endsWith(valB) : false;
+                },
+
+                /***************
+                 * - A: value
+                 * - B: condition value
+                 * - EX) if(A, computer, B)
+                 ***************/
+                ['CONTAINS', '~']: { valA, valB ->
+                    return (valA != null) ? valA.contains(valB) : false;
+                },
+
+                /***************
+                 * - A: value
+                 * - B: condition value
+                 * - EX) if(A, computer, B)
+                 ***************/
+                ['MATCHES']: { valA, valB ->
+                    return (valA != null) ? valA.matches(valB) : false;
+                },
+
+                /***************
+                 * - A: value
+                 * - EX) if(computer, A)
+                 ***************/
+                ['EXISTS']: { valA, valB ->
+                    return (!!valA);
+                },
+
+                /***************
+                 * - A: value
+                 * - EX) if(computer, A)
+                 ***************/
+                ['EMPTY']: { valA, valB ->
+                    return (valA != null) ? (valA == '') : false;
+                },
+
+                /***************
+                 * - A: value
+                 * - EX) if(computer, A)
+                 ***************/
+                ['NULL']: { valA, valB ->
+                    return (valA == null);
+                },
+        ]
+    }
+
+
     private boolean checkConditionFunction(OnePartObject it, Map<String, String> variableStringMap, Map<String, Closure> variableClosureMap){
         String variable = it.substitutes ?: getIgnoreCase(variableStringMap, it.valueCode)
         String computer
@@ -1155,25 +1257,13 @@ class VariableMan {
             computer = computer.replaceFirst('^NOT','')
             modeNegative = !modeNegative
         }
-        switch (computer){
-            case {['EQUALS', '=='].contains(it)}:
-                computerResult = (a != null) ? a.equals(b) : false; break;
-            case {['STARTS', '^'].contains(it)}:
-                computerResult = (a != null) ? a.startsWith(b) : false; break;
-            case {['ENDS'].contains(it)}:
-                computerResult = (a != null) ? a.endsWith(b) : false; break;
-            case {['CONTAINS', '~'].contains(it)}:
-                computerResult = (a != null) ? a.contains(b) : false; break;
-            case {['MATCHES'].contains(it)}:
-                computerResult = (a != null) ? a.matches(b) : false; break;
-            case {['EXISTS'].contains(it)}:
-                computerResult = (!!a); break;
-            case {['EMPTY'].contains(it)}:
-                computerResult = (a != null) ? (a == '') : false; break;
-            case {['NULL'].contains(it)}:
-                computerResult = (a == null); break;
-        }
-        return (modeNegative) ? !computerResult : computerResult
+
+        Closure closure = getIgnoreCase(this.conditionComputerFuncMap, computer)
+        if (!closure)
+            throw new Exception(VAR4, new Throwable("[${computer}]") )
+        computerResult = (modeNegative) ? !closure(a, b) : closure(a, b)
+
+        return computerResult
     }
 
     private boolean containsIgnoreCase(List list, String value){

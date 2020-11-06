@@ -1,6 +1,10 @@
 package jaemisseo.man
 
+import org.junit.After
+import org.junit.AfterClass
 import org.junit.Before
+import org.junit.BeforeClass
+import org.junit.Ignore
 import org.junit.Test
 
 import java.util.regex.Matcher
@@ -18,6 +22,9 @@ class VariableManTest {
     String codeRuleH1 = '${biz}${seq(4).left(0).error(over)}'
     String codeRuleH2 = '${biz}${class}${seq(3).left(0).error(over)}'
     String codeRuleS = '${biz(4).right(0)}${class(1)}${seq(4).left(0).error(over)}'
+
+    File testDir
+    File testFile
 
     VariableMan varman
 
@@ -71,7 +78,36 @@ class VariableManTest {
                 ]
         ])
 //        .setModeDebug(true)
+
+        Long time = new Date().getTime()
+        String dirPath = "/temp"
+        String filePName = "_test_temp_${time}.properties"
+        testDir = new File(dirPath)
+        testFile = new File(dirPath, filePName)
+        //- Check directories
+        testDir.mkdirs()
+        if (!testDir.exists())
+            return
+        //- Make temporary test file
+        testFile.write("system=op")
+        if (!testFile.exists())
+            return
     }
+
+    @After
+    void after(){
+        testFile.delete()
+    }
+
+    boolean checkTestFile(){
+        return testDir.exists() && testFile.exists()
+    }
+
+
+
+
+
+
 
     @Test
     void usage1(){
@@ -493,6 +529,124 @@ class VariableManTest {
     @Test(expected = Exception.class)
     void ErrorTest3() {
         String s = new VariableMan().parse(codeRuleS, [sys: 'SSSSSSS', biz: 'BBBBBBB', class: 'classabcd', seq: 10000])
+    }
+
+
+
+
+    @Test
+    void someFuncTest(){
+        Map<String, Closure> funcClosures = [
+                'split-join': { VariableMan.OnePartObject it, Map<String, Object> vsMap, Map<String, Closure> vcMap ->
+                    if (it.substitutes && it.members){
+                        String joiner = it.members[0]
+                        it.substitutes = it.substitutes.trim().split("")?.join(joiner)
+//                        it.length = it.substitutes.length()
+                        it.length = it.substitutes.getBytes().length
+                    }
+                }
+        ]
+        Map<String, Object> variables = [
+                a:123,
+                b:'ABCD',
+                c:'월화수목금'
+        ]
+        VariableMan variableMan = new VariableMan().setCharset('utf-8').putVariables(variables).putFuncs(funcClosures)
+        println variableMan.parseString('${b().split-join(/)}')
+        println variableMan.parseString('${c().split-join(/)}')
+
+    }
+
+
+
+
+
+
+    @Test
+    void additionalConditionTest(){
+        if (!checkTestFile())
+            return
+
+        VariableMan variableMan = new VariableMan().setCharset("utf-8").putConditionComputerFuncs([
+                /***************
+                 * - A: value
+                 * - B: condition value
+                 * - EX) if(A, computer, B)
+                 ***************/
+                ["FILE-EXISTS", "FILE"]: {  valA, valB ->
+                    return new File(valB).exists()
+                },
+
+                /***************
+                 * - A: value
+                 * - B: condition value
+                 * - EX) if(A, computer, B)
+                 ***************/
+                ["FILE-CONTAINS", "FILE~"]: { valA, valB ->
+                    String text = new File(valA).getText()
+                    return text.contains(valB)
+                },
+
+                /***************
+                 * - A: ! 으로 split하여 앞은 파일경로 뒤는 property key
+                 * - B: condition value
+                 * - EX) if(A, computer, B)
+                 ***************/
+                ["PROP-EQUALS", "PROP="]: { valA, valB ->
+                    String[] pathAndPropKey = valA.split("!")
+                    String filePath = pathAndPropKey[0]
+                    String checkPropKey = pathAndPropKey[1]
+                    Properties prop = new Properties()
+                    prop.load(new File(filePath).newInputStream())
+                    String value = prop.get(checkPropKey)
+                    return valB.equals(value)
+                },
+        ])
+
+        //File
+        assert "application-site-op.yml" == variableMan.parse('application-site-${if(file, "' +testFile.getPath()+ '").add("op").else().add("dev")}.yml')
+        assert "application-site-op.yml" == variableMan.parse('application-site-${if(' +testFile.getPath()+ ', file~, "system").add("op").else().add("dev")}.yml')
+
+        //Prop
+        assert "application-site-op.yml" == variableMan.parse('application-site-${if(' +testFile.getPath()+ '!system, prop=, "op").add("op").else().add("dev")}.yml')
+        assert "application-site-op.yml" == variableMan.parse('application-site-${if(' +testFile.getPath()+ '!system, !prop=, "op1").add("op").else().add("dev")}.yml')
+        assert "application-site-dev.yml" == variableMan.parse('application-site-${if(' +testFile.getPath()+ '!system, prop=, "op1").add("op").else().add("dev")}.yml')
+    }
+
+
+    @Test
+    void additionalFuncToCheckPropertiesTest(){
+        if (!checkTestFile())
+            return
+
+        VariableMan variableMan = new VariableMan().setCharset('utf-8').putVariableClosures([
+                'prop': { VariableMan.OnePartObject it, Map<String, Object> vsMap, Map<String, Closure> vcMap ->
+                    if (it.members){
+                        String propFilePath = VariableMan.parseMember(it.members[0], vsMap, vcMap)
+                        String checkPropKey = VariableMan.parseMember(it.members[1], vsMap, vcMap)
+                        Properties prop
+                        String value = ""
+                        try{
+                            prop = new Properties()
+                            prop.load(new File(propFilePath).newInputStream())
+                            value = prop.get(checkPropKey)
+                        }catch(e){
+//                            logger.warn("Error ocurred during loading file ", e)
+                        }
+                        it.substitutes = value
+//                        it.length = it.substitutes.length()
+                        it.length = it.substitutes.getBytes().length
+                    }
+                }
+        ])
+
+        //- exists
+        assert "application-site-op.yml" == variableMan.parse('application-site-${prop(' +testFile.getPath()+ ', "system")}.yml')
+        assert "application-site-op.yml" == variableMan.parse('application-site-${prop(' +testFile.getPath()+ ', "system")}.yml')
+
+        //- not exists
+        assert "application-site-.yml" == variableMan.parse('application-site-${prop(' +testFile.getPath()+ '.temp, "system")}.yml')
+        assert "application-site-.yml" == variableMan.parse('application-site-${prop(' +testFile.getPath()+ '.temp, "system")}.yml')
     }
 
 }
