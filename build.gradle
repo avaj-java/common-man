@@ -51,7 +51,7 @@ repositories {
 
 dependencies {
 
-    compile ( (rootProject?.findProject('common-util')) ? project(':common-util') : 'com.github.avaj-java:common-util:0.3.7.5' )
+    compile ( (rootProject?.findProject('common-util')) ? project(':common-util') : 'com.github.avaj-java:common-util:0.3.8.2' )
 
     //GROOVY
     compile 'org.codehaus.groovy:groovy-all:2.1.3'

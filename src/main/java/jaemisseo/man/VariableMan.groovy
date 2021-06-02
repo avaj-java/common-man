@@ -1,5 +1,7 @@
 package jaemisseo.man
 
+import jaemisseo.man.util.SimpleDataUtil
+import jaemisseo.man.util.SimpleSplitUtil
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -1157,16 +1159,75 @@ class VariableMan {
                 /***************
                  * - A: value
                  * - B: condition value
-                 * - EX) if(A, computer, B)
+                 * - EX)
+                 *      - if(A, computer, B)
+                 *      - if(A == B)
                  ***************/
                 ['EQUALS', '==']: { valA, valB ->
-                    return (valA != null) ? valA.equals(valB) : false;
+                    return (valB == null) ? valA == null : (valA != null) ? valA.equals(valB) : false;
                 },
 
                 /***************
                  * - A: value
                  * - B: condition value
-                 * - EX) if(A, computer, B)
+                 * - EX)
+                 *      - if(A, computer, B)
+                 *      - if(A != B)
+                 ***************/
+                ['NOTEQUALS', '!=']: { valA, valB ->
+                    return (valB == null) ? valA != null : (valA != null) ? !valA.equals(valB) : false;
+                },
+
+                /***************
+                 * - A: value
+                 * - B: condition value
+                 * - EX)
+                 *      - if(A, computer, B)
+                 *      - if(A < B)
+                 ***************/
+                ['LT', '<']: { valA, valB ->
+                    return (valA != null) ? valA < valB : false;
+                },
+
+                /***************
+                 * - A: value
+                 * - B: condition value
+                 * - EX)
+                 *      - if(A, computer, B)
+                 *      - if(A > B)
+                 ***************/
+                ['GT', '>']: { valA, valB ->
+                    return (valA != null) ? valA > valB : false;
+                },
+
+                /***************
+                 * - A: value
+                 * - B: condition value
+                 * - EX)
+                 *      - if(A, computer, B)
+                 *      - if(A <= B)
+                 ***************/
+                ['LTE', '<=']: { valA, valB ->
+                    return (valA != null) ? valA <= valB : false;
+                },
+
+                /***************
+                 * - A: value
+                 * - B: condition value
+                 * - EX)
+                 *      - if(A, computer, B)
+                 *      - if(A >= B)
+                 ***************/
+                ['GTE', '>=']: { valA, valB ->
+                    return (valA != null) ? valA >= valB : false;
+                },
+
+                /***************
+                 * - A: value
+                 * - B: condition value
+                 * - EX)
+                 *      - if(A, computer, B)
+                 *      - if(A ^ B)
                  ***************/
                 ['STARTS', '^']: { valA, valB ->
                     return (valA != null) ? valA.startsWith(valB) : false;
@@ -1175,16 +1236,20 @@ class VariableMan {
                 /***************
                  * - A: value
                  * - B: condition value
-                 * - EX) if(A, computer, B)
+                 * - EX)
+                 *      - if(A, computer, B)
+                 *      - if(A $ B)
                  ***************/
-                ['ENDS']: { valA, valB ->
+                ['ENDS', '$']: { valA, valB ->
                     return (valA != null) ? valA.endsWith(valB) : false;
                 },
 
                 /***************
                  * - A: value
                  * - B: condition value
-                 * - EX) if(A, computer, B)
+                 * - EX)
+                 *      - if(A, computer, B)
+                 *      - if(A ~ B)
                  ***************/
                 ['CONTAINS', '~']: { valA, valB ->
                     return (valA != null) ? valA.contains(valB) : false;
@@ -1193,23 +1258,29 @@ class VariableMan {
                 /***************
                  * - A: value
                  * - B: condition value
-                 * - EX) if(A, computer, B)
+                 * - EX)
+                 *      - if(A, computer, B)
+                 *      - if(A ==~ B)
                  ***************/
-                ['MATCHES']: { valA, valB ->
+                ['MATCHES', '==~']: { valA, valB ->
                     return (valA != null) ? valA.matches(valB) : false;
                 },
 
                 /***************
                  * - A: value
-                 * - EX) if(computer, A)
+                 * - EX)
+                 *      - if(A, computer)
+                 *      - if(A EXISTS)
                  ***************/
-                ['EXISTS']: { valA, valB ->
+                ['EXISTS', '!!']: { valA, valB ->
                     return (!!valA);
                 },
 
                 /***************
                  * - A: value
-                 * - EX) if(computer, A)
+                 * - EX)
+                 *      - if(A, computer)
+                 *      - if(A EMPTY)
                  ***************/
                 ['EMPTY']: { valA, valB ->
                     return (valA != null) ? (valA == '') : false;
@@ -1227,41 +1298,202 @@ class VariableMan {
 
 
     private boolean checkConditionFunction(OnePartObject it, Map<String, String> variableStringMap, Map<String, Closure> variableClosureMap){
-        String variable = it.substitutes ?: getIgnoreCase(variableStringMap, it.valueCode)
-        String computer
-        String targetValue
-        if (it.members.size() == 1){
-            computer = it.members[0]
-        }else if (it.members.size() == 2){
-            computer = it.members[0]
-            targetValue = parseMember(it.members[1], variableStringMap, variableClosureMap)
-        }else if (it.members.size() == 3){
-            variable = parseMember(it.members[0], variableStringMap, variableClosureMap)
-            computer = it.members[1]
-            targetValue = parseMember(it.members[2], variableStringMap, variableClosureMap)
-        }
-        return compute(variable, computer, targetValue)
+        int memberSize = it.members.size()
+        String value, computer, targetValue
+
+        value = it.substitutes ?: getIgnoreCase(variableStringMap, it.valueCode)
+        return computeAsMemberArrayInIf(it.members, value)
     }
 
-    private boolean compute(String a, String computer, String b){
-        computer = computer.toUpperCase()
-        boolean computerResult = false
-        boolean modeNegative = false
-        //- parse '!'
-        while (computer.startsWith('!')){
-            computer = computer.replaceFirst('^[!]','')
-            modeNegative = !modeNegative
-        }
-        //- parse 'not'
-        if (computer.startsWith('NOT')){
-            computer = computer.replaceFirst('^NOT','')
-            modeNegative = !modeNegative
+    private boolean computeAsMemberArrayInIf(String[] members, String alreadyDefinedValue){
+        boolean result = false
+        int memberSize = members.size()
+        String value, computer, targetValue
+
+        if (memberSize == 1){
+            String notYetConfirmedOperater = members[0]
+            String maybeComputerString = notYetConfirmedOperater.toUpperCase()
+            if (hasComputer(maybeComputerString) || hasComputeWithNegativeMark(maybeComputerString)){
+                value = alreadyDefinedValue //변수를 먼저 입력 후 Pipeline 방식 IF가 입력될때 value variable로서 인정한다.
+                computer = notYetConfirmedOperater
+                result = computeOperator(value, computer, targetValue)
+            }else{
+                result = computeAsNaturalOperatingStringInIf(notYetConfirmedOperater, alreadyDefinedValue)
+            }
+
+        }else if (memberSize == 2){
+            value = alreadyDefinedValue //변수를 먼저 입력 후 Pipeline 방식 IF가 입력될때 value variable로서 인정한다.
+            computer = members[0]
+            targetValue = parseMember(members[1], variableStringMap, variableClosureMap)
+            result = computeOperator(value, computer, targetValue)
+
+        }else if (memberSize == 3){
+            value = parseMember(members[0], variableStringMap, variableClosureMap)
+            computer = members[1]
+            targetValue = parseMember(members[2], variableStringMap, variableClosureMap)
+            result = computeOperator(value, computer, targetValue)
+
+        }else{
+            throw new Exception("(Error - member-size:$memberSize - ${members?.toArrayString()})")
         }
 
-        Closure closure = getIgnoreCase(this.conditionComputerFuncMap, computer)
-        if (!closure)
-            throw new Exception(VAR4, new Throwable("[${computer}]") )
-        computerResult = (modeNegative) ? !closure(a, b) : closure(a, b)
+        return result
+    }
+
+    private boolean hasComputer(String computerKey){
+        return this.conditionComputerFuncMap.containsKey(computerKey)
+    }
+
+    private boolean hasComputeWithNegativeMark(String computerKey){
+        computerKey = removeNegativeMark(computerKey)
+        return hasComputer(computerKey)
+    }
+
+    private String removeNegativeMark(String computerKey){
+        while (true){
+            if (computerKey.startsWith("NOT")){
+                computerKey = computerKey.replaceFirst("NOT", "")
+            }else if (computerKey.startsWith("!")){
+                computerKey = computerKey.replaceFirst("!", "")
+            }else{
+                break;
+            }
+        }
+        return computerKey
+    }
+
+    private Closure getComputer(String computerKey){
+        return this.conditionComputerFuncMap.get(computerKey)
+    }
+
+    private boolean computeAsNaturalOperatingStringInIf(String notYetConfirmed){
+        return computeAsNaturalOperatingStringInIf(notYetConfirmed, null)
+    }
+
+    private boolean computeAsNaturalOperatingStringInIf(String notYetConfirmed, String alreadyDefinedValue){
+        boolean result = false
+        String value, computer, targetValue
+
+        //Quote 인 것들 {} 로 대체하며(다른 Collection에 담아놓기), 문자들 Concat하고 다시 기존 특수문자 Split 진행 후, 담아놓은 대체된 문자들 value로 활용
+        List<String> groups = SimpleSplitUtil.separateGroupByQuotes(notYetConfirmed)
+        List<String> stringValues = groups.findAll{ SimpleDataUtil.checkStatusQuotedString(it) }
+        String alternativeString = '{}'
+        String convertedNotYetConfirmed = groups.collect{(SimpleDataUtil.checkStatusQuotedString(it)) ? alternativeString : it }.join("")
+
+        //Extract Value
+        String[] splitedOperatingLogicalArray = convertedNotYetConfirmed.split('\\s*[\\^$><=!~]+\\s*')
+        int injectIndex = -1;
+        splitedOperatingLogicalArray = splitedOperatingLogicalArray.collect{
+            while (it.contains(alternativeString)){
+                String replacement = stringValues[++injectIndex]
+                if (replacement.indexOf('\\') != -1)
+                    replacement = replacement.replaceAll('\\\\','\\\\\\\\')
+                // This Condition's Logic prevent Error - java.lang.IllegalArgumentException: named capturing group has 0 length name
+                if (replacement.indexOf('$') != -1)
+                    replacement = replacement.replaceAll('\\$','\\\\\\$')
+                it = it.replaceFirst("[{][}]", replacement)
+            }
+            it
+        }.toArray() as String[]
+        int memberSize = splitedOperatingLogicalArray.size()
+
+        //Extract Operator
+        List<String> matchedString = Pattern.compile('[\\^$><=!~]+').matcher(convertedNotYetConfirmed)?.findAll()
+        computer = (matchedString.size() > 0) ? matchedString.get(0) : null
+
+        if (computer == null){
+            switch (memberSize){
+                case 1: //- if(value)
+                    value = parseMember(splitedOperatingLogicalArray[0], variableStringMap, variableClosureMap)
+                    result = computeBoolean(value)
+                    break;
+
+                default: //- if(value value..???)
+                    throw new Exception("(Error - member-size:$memberSize - ${splitedOperatingLogicalArray?.toArrayString()})")
+                    break;
+            }
+
+        }else{
+            switch (memberSize){
+                case 1: //- if(value)
+                    value = parseMember(splitedOperatingLogicalArray[0], variableStringMap, variableClosureMap)
+                    result = computeBoolean(value)
+                    break;
+
+                case 2:
+                    if (splitedOperatingLogicalArray[0].isEmpty()){
+                        if (alreadyDefinedValue != null){
+                            //- someValue().if(computer value)
+                            value = alreadyDefinedValue
+                            targetValue = parseMember(splitedOperatingLogicalArray[1], variableStringMap, variableClosureMap)
+                            result = computeOperator(value, computer, targetValue)
+                        }else if (computer.startsWith("!") && computer.endsWith("!")){
+                            //- if(!value)
+                            value = parseMember(splitedOperatingLogicalArray[1], variableStringMap, variableClosureMap)
+                            result = computeBoolean(value)
+                            result = computeNegativeMark(result, computer)
+                        }
+                    }else{
+                        //- if (value computer targetValue)
+                        value = parseMember(splitedOperatingLogicalArray[0], variableStringMap, variableClosureMap)
+                        targetValue = parseMember(splitedOperatingLogicalArray[1], variableStringMap, variableClosureMap)
+                        result = computeOperator(value, computer, targetValue)
+                    }
+                    break;
+
+                default: //- if (???)
+                    throw new Exception("(Error - member-size:$memberSize - ${splitedOperatingLogicalArray?.toArrayString()})")
+                    break;
+            }
+        }
+
+        return result
+    }
+
+    private boolean computeBoolean(String variable){
+        //List,Map 등은 Size !0 //String !EmptyString, Integer,Long은 !0
+        return !!variable
+    }
+
+    private boolean computeNegativeMark(boolean result, String computer){
+        return computeNegativeMark(result, computer, Arrays.asList("!"))
+    }
+
+    private boolean computeNegativeMark(boolean result, String computer, List<String> negativeChars){
+        String negativeChar
+        while (true){
+            negativeChar = negativeChars.find{ computer.startsWith(it) }
+            if (negativeChar != null){
+                int lastIndex = negativeChar.length()
+                computer = computer.substring(lastIndex)
+                result = !result
+            }else{
+                break;
+            }
+        }
+        return result
+    }
+
+    private boolean computeOperator(String a, String computer, String b){
+        String computerUpper = computer.toUpperCase()
+        boolean computerResult = false
+        boolean modeNegative = false
+        Closure closure
+
+        //- cacluate negative
+        if (!hasComputer(computerUpper) && hasComputeWithNegativeMark(computerUpper)){
+            //- parse '!' or 'not'
+            modeNegative = computeNegativeMark(modeNegative, computerUpper, ["!", "NOT"])
+            computerUpper = removeNegativeMark(computerUpper)
+        }
+
+        //- compute
+        closure = getComputer(computerUpper)
+        if (closure){
+            computerResult = (modeNegative) ? !closure(a, b) : closure(a, b)
+        }else{
+            throw new Exception(VAR4, new Throwable("[${computerUpper}]") )
+        }
 
         return computerResult
     }
