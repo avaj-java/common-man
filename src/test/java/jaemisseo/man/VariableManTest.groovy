@@ -10,13 +10,6 @@ import org.junit.Test
 import java.util.regex.Matcher
 import java.util.regex.Pattern
 
-/**
- * Created with IntelliJ IDEA.
- * User: sujkim
- * Date: 16. 11. 14
- * Time: 오후 7:08
- * To change this template use File | Settings | File Templates.
- */
 class VariableManTest {
 
     String codeRuleH1 = '${biz}${seq(4).left(0).error(over)}'
@@ -294,6 +287,28 @@ class VariableManTest {
 
     @Test
     void conditionFunction(){
+        /** IF and ELSEIF **/
+        assert varman.parse('Hello ${if("1", equals, "1").add(ADD1)}') == 'Hello ADD1'
+        assert varman.parse('Hello ${if("1", equals, "2").add(ADD1)}') == 'Hello '
+        assert varman.parse('Hello ${if("1", equals, "3").add(ADD1).elseif("2", equals, "3").add(ADD2).elseif("3", equals, "3").add(ADD3).elseif("4", equals, "3").add(ADD4).elseif("5", equals, "3").add(ADD5)}') == 'Hello ADD3'
+        assert varman.parse('Hello ${if("1", equals, "3").add(ADD1).elseif("2", equals, "3").add(ADD2).elseif("3", equals, "3").add(ADD3).elseif("4", equals, "4").add(ADD4).elseif("5", equals, "5").add(ADD5)}') == 'Hello ADD3'
+        assert varman.parse('Hello ${if("1", notequals, "3").add(ADD1).elseif("2", notequals, "3").add(ADD2).elseif("3", notequals, "3").add(ADD3).elseif("4", equals, "4").add(ADD4).elseif("5", equals, "5").add(ADD5).else().add(else)}') == 'Hello ADD1'
+        assert varman.parse('Hello ${if("1", notequals, "3").add(ADD1).elseif("2", notequals, "3").add(ADD2).elseif("3", notequals, "3").add(ADD3).elseif("4", equals, "4").add(ADD4).elseif("5", equals, "5").add(ADD5).else().add(else).endif().add(" ReHello")}') == 'Hello ADD1 ReHello'
+        assert varman.parse('Hello ${if("3", notequals, "3").add(ADD1).elseif("3", notequals, "3").add(ADD2).elseif("3", notequals, "3").add(ADD3).elseif("4", equals, "3").add(ADD4).elseif("5", equals, "5").add(ADD5).else().add(else).endif().add(" ReHello")}') == 'Hello ADD5 ReHello'
+        assert varman.parse('Hello ${if("3", notequals, "3").add(ADD1).elseif("3", notequals, "3").add(ADD2).elseif("3", notequals, "3").add(ADD3).elseif("4", equals, "3").add(ADD4).elseif("5", equals, "3").add(ADD5).else().add(else).endif().add(" ReHello")}') == 'Hello else ReHello'
+
+        /** IF and ELSEIF and IF AGAIN **/
+        assert varman.parse('Hello ${if(b, starts, b).add(Variable . Man).elseif(a,equals,a).add("Addition")}') == 'Hello Variable . Man'
+        assert varman.parse('Hello ${if(a, starts, b).add(Variable . Man).elseif(a,equals,a).add("Addition")}') == 'Hello Addition'
+        assert varman.parse('Hello ${if(a, starts, "a").add(Variable . Man).elseif(a,equals,a).add("Addition").if(a,equals,a)}') == 'Hello Variable . Man'
+        assert varman.parse('Hello ${if(a, starts, b).add(Variable . Man).elseif(a,equals,a).add("Addition").if(a,equals,a)}') == 'Hello Addition'
+        assert varman.parse('Hello ${if(abc, starts, ab).add(ADD1).elseif(a,equals,a).add("ADD2").elseif("aa",equals,"aa").add("ADD3").if(a,equals,a).add("newIf1")}') == 'Hello ADD1newIf1'
+        assert varman.parse('Hello ${if(abc, starts, bc).add(ADD1).elseif(abc,starts,c).add("ADD2").else().add("else ").if(a,equals,b).add("newIf1")}') == 'Hello else '
+
+        /** IF and ELSEIF and IF AGAIN **/
+        assert varman.parse('Hello ${if(b, starts, b).add(Variable . Man).add(" doubleAdd").add(" tripleAdd").elseif(a,equals,a).add("Addition")}') == 'Hello Variable . Man doubleAdd tripleAdd'
+        assert varman.parse('Hello ${if(a, starts, b).add(Variable . Man).add(" doubleAdd").add(" tripleAdd").elseif(a,equals,a).add("Addition")}') == 'Hello Addition'
+
         /** IF - Equals / Starts / Ends / Contains / Matches **/
         assert varman.parse('Hello ${hello().if(equals, "hello").add(ADD1)}') == 'Hello helloADD1'
         assert varman.parse('Hello ${hello().if(equals, "ello").add(ADD1)}') == 'Hello hello'
@@ -331,28 +346,78 @@ class VariableManTest {
         assert varman.parse('Hello ${thereIsNoVariable().if(notempty).add(ADD1)}') == 'Hello ADD1'
         assert varman.parse('Hello ${thereIsNoVariable().if(null).add(ADD1)}') == 'Hello ADD1'
         assert varman.parse('Hello ${thereIsNoVariable().if(notnull).add(ADD1)}') == 'Hello '
+    }
 
+    @Test
+    void naturalConditionFunction(){
         /** IF and ELSEIF **/
-        assert varman.parse('Hello ${if("1", equals, "1").add(ADD1)}') == 'Hello ADD1'
-        assert varman.parse('Hello ${if("1", equals, "2").add(ADD1)}') == 'Hello '
-        assert varman.parse('Hello ${if("1", equals, "3").add(ADD1).elseif("2", equals, "3").add(ADD2).elseif("3", equals, "3").add(ADD3).elseif("4", equals, "3").add(ADD4).elseif("5", equals, "3").add(ADD5)}') == 'Hello ADD3'
-        assert varman.parse('Hello ${if("1", equals, "3").add(ADD1).elseif("2", equals, "3").add(ADD2).elseif("3", equals, "3").add(ADD3).elseif("4", equals, "4").add(ADD4).elseif("5", equals, "5").add(ADD5)}') == 'Hello ADD3'
-        assert varman.parse('Hello ${if("1", notequals, "3").add(ADD1).elseif("2", notequals, "3").add(ADD2).elseif("3", notequals, "3").add(ADD3).elseif("4", equals, "4").add(ADD4).elseif("5", equals, "5").add(ADD5).else().add(else)}') == 'Hello ADD1'
-        assert varman.parse('Hello ${if("1", notequals, "3").add(ADD1).elseif("2", notequals, "3").add(ADD2).elseif("3", notequals, "3").add(ADD3).elseif("4", equals, "4").add(ADD4).elseif("5", equals, "5").add(ADD5).else().add(else).endif().add(" ReHello")}') == 'Hello ADD1 ReHello'
-        assert varman.parse('Hello ${if("3", notequals, "3").add(ADD1).elseif("3", notequals, "3").add(ADD2).elseif("3", notequals, "3").add(ADD3).elseif("4", equals, "3").add(ADD4).elseif("5", equals, "5").add(ADD5).else().add(else).endif().add(" ReHello")}') == 'Hello ADD5 ReHello'
-        assert varman.parse('Hello ${if("3", notequals, "3").add(ADD1).elseif("3", notequals, "3").add(ADD2).elseif("3", notequals, "3").add(ADD3).elseif("4", equals, "3").add(ADD4).elseif("5", equals, "3").add(ADD5).else().add(else).endif().add(" ReHello")}') == 'Hello else ReHello'
+        assert varman.parse('Hello ${if("1" == "1").add(ADD1)}') == 'Hello ADD1'
+        assert varman.parse('Hello ${if("1" == "2").add(ADD1)}') == 'Hello '
+        assert varman.parse('Hello ${if("1" == "3").add(ADD1).elseif("2"=="3").add(ADD2).elseif("3"=="3").add(ADD3).elseif("4"=="3").add(ADD4).elseif("5"=="3").add(ADD5)}') == 'Hello ADD3'
+        assert varman.parse('Hello ${if("1"=="3").add(ADD1).elseif("2"=="3").add(ADD2).elseif("3"=="3").add(ADD3).elseif("4"=="4").add(ADD4).elseif("5"=="5").add(ADD5)}') == 'Hello ADD3'
+        assert varman.parse('Hello ${if("1" != "3").add(ADD1).elseif("2"!="3").add(ADD2).elseif("3"!="3").add(ADD3).elseif("4"=="4").add(ADD4).elseif("5"=="5").add(ADD5).else().add(else)}') == 'Hello ADD1'
+        assert varman.parse('Hello ${if("1"!= "3").add(ADD1).elseif("2"!="3").add(ADD2).elseif("3"!="3").add(ADD3).elseif("4"=="4").add(ADD4).elseif("5"=="5").add(ADD5).else().add(else).endif().add(" ReHello")}') == 'Hello ADD1 ReHello'
+        assert varman.parse('Hello ${if("3" !="3").add(ADD1).elseif("3"!="3").add(ADD2).elseif("3"!="3").add(ADD3).elseif("4"=="3").add(ADD4).elseif("5"=="5").add(ADD5).else().add(else).endif().add(" ReHello")}') == 'Hello ADD5 ReHello'
+        assert varman.parse('Hello ${if("3"!="3").add(ADD1).elseif("3"!="3").add(ADD2).elseif("3"!="3").add(ADD3).elseif("4"=="3").add(ADD4).elseif("5"=="3").add(ADD5).else().add(else).endif().add(" ReHello")}') == 'Hello else ReHello'
 
         /** IF and ELSEIF and IF AGAIN **/
-        assert varman.parse('Hello ${if(b, starts, b).add(Variable . Man).elseif(a,equals,a).add("Addition")}') == 'Hello Variable . Man'
-        assert varman.parse('Hello ${if(a, starts, b).add(Variable . Man).elseif(a,equals,a).add("Addition")}') == 'Hello Addition'
-        assert varman.parse('Hello ${if(a, starts, "a").add(Variable . Man).elseif(a,equals,a).add("Addition").if(a,equals,a)}') == 'Hello Variable . Man'
-        assert varman.parse('Hello ${if(a, starts, b).add(Variable . Man).elseif(a,equals,a).add("Addition").if(a,equals,a)}') == 'Hello Addition'
-        assert varman.parse('Hello ${if(abc, starts, ab).add(ADD1).elseif(a,equals,a).add("ADD2").elseif("aa",equals,"aa").add("ADD3").if(a,equals,a).add("newIf1")}') == 'Hello ADD1newIf1'
-        assert varman.parse('Hello ${if(abc, starts, bc).add(ADD1).elseif(abc,starts,c).add("ADD2").else().add("else ").if(a,equals,b).add("newIf1")}') == 'Hello else '
+        assert varman.parse('Hello ${if(b ^ b).add(Variable . Man).elseif(a == a).add("Addition")}') == 'Hello Variable . Man'
+        assert varman.parse('Hello ${if(a ^ b).add(Variable . Man).elseif(a == a).add("Addition")}') == 'Hello Addition'
+        assert varman.parse('Hello ${if(a ^ "a").add(Variable . Man).elseif(a == a).add("Addition").if(a == a)}') == 'Hello Variable . Man'
+        assert varman.parse('Hello ${if(a ^ b).add(Variable . Man).elseif(a == a).add("Addition").if(a == a)}') == 'Hello Addition'
+        assert varman.parse('Hello ${if(abc ^ ab).add(ADD1).elseif(a == a).add("ADD2").elseif("aa" == "aa").add("ADD3").if(a == a).add("newIf1")}') == 'Hello ADD1newIf1'
+        assert varman.parse('Hello ${if(abc ^ bc).add(ADD1).elseif(abc ^ c).add("ADD2").else().add("else ").if(a == b).add("newIf1")}') == 'Hello else '
 
         /** IF and ELSEIF and IF AGAIN **/
-        assert varman.parse('Hello ${if(b, starts, b).add(Variable . Man).add(" doubleAdd").add(" tripleAdd").elseif(a,equals,a).add("Addition")}') == 'Hello Variable . Man doubleAdd tripleAdd'
-        assert varman.parse('Hello ${if(a, starts, b).add(Variable . Man).add(" doubleAdd").add(" tripleAdd").elseif(a,equals,a).add("Addition")}') == 'Hello Addition'
+        assert varman.parse('Hello ${if(b ^ b).add(Variable . Man).add(" doubleAdd").add(" tripleAdd").elseif(a == a).add("Addition")}') == 'Hello Variable . Man doubleAdd tripleAdd'
+        assert varman.parse('Hello ${if(a ^ b).add(Variable . Man).add(" doubleAdd").add(" tripleAdd").elseif(a == a).add("Addition")}') == 'Hello Addition'
+
+        /** IF - Equals / Starts / Ends / Contains / Matches **/
+        assert varman.parse('Hello ${hello().if(== "hello").add(ADD1)}') == 'Hello helloADD1'
+        assert varman.parse('Hello ${hello().if(== "ello").add(ADD1)}') == 'Hello hello'
+        assert varman.parse('Hello ${hello().if(^ "he").addBefore(ADD1)}') == 'Hello ADD1hello'
+        assert varman.parse('Hello ${hello().if(^ "el").addBefore(ADD1)}') == 'Hello hello'
+        assert varman.parse('Hello ${hello().if($ "llo").addBefore(ADD1)}') == 'Hello ADD1hello'
+        assert varman.parse('Hello ${hello().if($ "ll").addBefore(ADD1)}') == 'Hello hello'
+        assert varman.parse('Hello ${hello().if(~ "ll").addBefore(ADD1)}') == 'Hello ADD1hello'
+        assert varman.parse('Hello ${hello().if(~ "el").addBefore(ADD1)}') == 'Hello ADD1hello'
+        assert varman.parse('Hello ${hello().if(~ "rel").addBefore(ADD1)}') == 'Hello hello'
+        assert varman.parse('Hello ${hello().if(~ "").addBefore(ADD1)}') == 'Hello ADD1hello'
+        assert varman.parse('Hello ${hello().if(==~ "^hello").addBefore(ADD1)}') == 'Hello ADD1hello'
+        assert varman.parse('Hello ${hello().if(==~ "\\w*").addBefore(ADD1)}') == 'Hello ADD1hello'
+        assert varman.parse('Hello ${hello().if(==~ "\\d*").addBefore(ADD1)}') == 'Hello hello'
+
+        /** IF - Exists / Empty / Null **/
+        // hello = 'hello'
+        assert varman.parse('Hello ${hello().if(exists).add(ADD1)}') == 'Hello helloADD1'
+        assert varman.parse('Hello ${hello().if(notexists).add(ADD1)}') == 'Hello hello'
+        assert varman.parse('Hello ${hello().if(== "").add(ADD1)}') == 'Hello hello'
+        assert varman.parse('Hello ${hello().if(!= "").add(ADD1)}') == 'Hello helloADD1'
+        assert varman.parse('Hello ${hello().if(== null).add(ADD1)}') == 'Hello hello'
+        assert varman.parse('Hello ${hello().if(!= null).add(ADD1)}') == 'Hello helloADD1'
+        // nothing = ''
+        assert varman.parse('Hello ${nothing().if(exists).add(ADD1)}') == 'Hello '
+        assert varman.parse('Hello ${nothing().if(notexists).add(ADD1)}') == 'Hello ADD1'
+        assert varman.parse('Hello ${nothing().if(== "").add(ADD1)}') == 'Hello ADD1'
+        assert varman.parse('Hello ${nothing().if(!= "").add(ADD1)}') == 'Hello '
+        assert varman.parse('Hello ${nothing().if(== null).add(ADD1)}') == 'Hello '
+        assert varman.parse('Hello ${nothing().if(!= notnull).add(ADD1)}') == 'Hello ADD1'
+        // thereIsNoVariable = null
+
+        //TODO:.. It cannot recognize pre-inputed-value inner system. so recommand to use below
+//        assert varman.parse('Hello ${thereIsNoVariable().if(!!).add(ADD1)}') == 'Hello '
+//        assert varman.parse('Hello ${thereIsNoVariable().if(!).add(ADD1)}') == 'Hello ADD1'
+//        assert varman.parse('Hello ${thereIsNoVariable().if(== "").add(ADD1)}') == 'Hello '
+//        assert varman.parse('Hello ${thereIsNoVariable().if(!= "").add(ADD1)}') == 'Hello ADD1'
+//        assert varman.parse('Hello ${thereIsNoVariable().if(== null).add(ADD1)}') == 'Hello ADD1'
+//        assert varman.parse('Hello ${thereIsNoVariable().if(!= notnull).add(ADD1)}') == 'Hello '
+
+        assert varman.parse('Hello ${thereIsNoVariable().if(exists).add(ADD1)}') == 'Hello '
+        assert varman.parse('Hello ${thereIsNoVariable().if(notexists).add(ADD1)}') == 'Hello ADD1'
+        assert varman.parse('Hello ${thereIsNoVariable().if(empty).add(ADD1)}') == 'Hello '
+        assert varman.parse('Hello ${thereIsNoVariable().if(notempty).add(ADD1)}') == 'Hello ADD1'
+        assert varman.parse('Hello ${thereIsNoVariable().if(null).add(ADD1)}') == 'Hello ADD1'
+        assert varman.parse('Hello ${thereIsNoVariable().if(notnull).add(ADD1)}') == 'Hello '
     }
 
     @Test
