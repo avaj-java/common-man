@@ -153,7 +153,10 @@ class VariableMan {
     /* Pattern - Variable */
     private String variableSign = '$'
     private String patternBodyToGetVariable = '[{][^{}]*\\w+[^{}]*[}]'
-    private String patternToGetVariable = "[" +variableSign+ "]" + patternBodyToGetVariable     // If variable contains some word in ${} then convert to User Set Value or...
+    private String patternBodyStartToGetVariable = '[{][^{}]*'
+    private String patternBodyContentsToGetVariable = '\\w+'
+    private String patternBodyEndToGetVariable = '[^{}]*[}]'
+    private String patternToGetVariable = "[" +variableSign+ "]" + patternBodyStartToGetVariable + patternBodyContentsToGetVariable + patternBodyEndToGetVariable     // If variable contains some word in ${} then convert to User Set Value or...
 
     /* Pattern - Member */
     private String patternToSeperateMemebers = ',(?=(?:[^"]*"[^"]*")*[^"]*$)(?=(?:[^\']*\'[^\']*\')*[^\']*$)'
@@ -193,7 +196,7 @@ class VariableMan {
 
     VariableMan setVariableSign(String variableSign){
         this.variableSign = variableSign
-        this.patternToGetVariable = "[" +variableSign+ "]" + patternBodyToGetVariable
+        this.patternToGetVariable = "[" +variableSign+ "]" + patternBodyStartToGetVariable + patternBodyContentsToGetVariable + patternBodyEndToGetVariable
         return this
     }
 
