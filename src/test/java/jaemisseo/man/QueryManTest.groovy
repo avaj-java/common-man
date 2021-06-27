@@ -1,6 +1,6 @@
 package jaemisseo.man
 
-import groovyjarjarantlr.collections.List
+//import groovyjarjarantlr.collections.List //TODO: what is it?
 import jaemisseo.man.bean.ManColTestBean
 import jaemisseo.man.bean.ManTestBean
 import jaemisseo.man.util.ConnectionGenerator
