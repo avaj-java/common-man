@@ -568,6 +568,11 @@ class VariableManTest {
         assert varman.parse('%{a1} %{a2} %{a3}') == 'a aa aaa'
         assert varman.parse('%{a1} ${a2} %{a3}') == 'a ${a2} aaa'
 
+        varman.setVariableSign('')
+        assert varman.parse('${a1} ${a2} ${a3}') == '$a $aa $aaa'
+        assert varman.parse('#{a1} #{a2} #{a3}') == '#a #aa #aaa'
+        assert varman.parse('#{a1} ${a2} #{a3}') == '#a $aa #aaa'
+        assert varman.parse('{a1} {a2} {a3}') == 'a aa aaa'
     }
 
 

@@ -196,7 +196,12 @@ class VariableMan {
 
     VariableMan setVariableSign(String variableSign){
         this.variableSign = variableSign
-        this.patternToGetVariable = "[" +variableSign+ "]" + patternBodyStartToGetVariable + patternBodyContentsToGetVariable + patternBodyEndToGetVariable
+        if (variableSign){
+            this.patternToGetVariable = "[" +variableSign+ "]" + patternBodyStartToGetVariable + patternBodyContentsToGetVariable + patternBodyEndToGetVariable
+        }else{
+            this.patternToGetVariable = patternBodyStartToGetVariable + patternBodyContentsToGetVariable + patternBodyEndToGetVariable
+
+        }
         return this
     }
 
@@ -528,7 +533,12 @@ class VariableMan {
         partObj.isCode = true
 
         // 1. get String in ${ }
-        String content = partValue.replaceFirst("[${variableSign}]", '').replaceFirst('\\{', '').replaceFirst('\\}', '')
+        String content
+        if (variableSign){
+            content = partValue.replaceFirst("[${variableSign}]", '').replaceFirst('\\{', '').replaceFirst('\\}', '')
+        }else{
+            content = partValue.replaceFirst('\\{', '').replaceFirst('\\}', '')
+        }
         validateFunc(content)
 
         // 2. Analysis And Run Function
