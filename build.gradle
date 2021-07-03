@@ -51,7 +51,7 @@ repositories {
 
 dependencies {
 
-    compile ( (rootProject?.findProject('common-util')) ? project(':common-util') : 'com.github.avaj-java:common-util:0.4.0' )
+    compile ( (rootProject?.findProject('common-util')) ? project(':common-util') : 'com.github.avaj-java:common-util:0.4.1' )
 
     //SLF4j
     compile 'org.slf4j:slf4j-api:1.7.7'
@@ -60,6 +60,8 @@ dependencies {
     testCompile 'junit:junit:4.11'
     testCompile 'ch.qos.logback:logback-classic:1.2.3'
     testCompile 'ch.qos.logback:logback-core:1.2.3'
+
+    //The module that added this module as a dependency decides.
 //    testCompile 'com.oracle:ojdbc6:11.2.0.3'
 //    testCompile 'mysql:mysql-connector-java:5.1.46'
 
