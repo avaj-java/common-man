@@ -287,7 +287,7 @@ class VariableManTest {
     }
 
     @Test
-    void conditionFunction(){
+    void if_conditionFunction(){
         /** IF and ELSEIF **/
         assert varman.parse('Hello ${if("1", equals, "1").add(ADD1)}') == 'Hello ADD1'
         assert varman.parse('Hello ${if("1", equals, "2").add(ADD1)}') == 'Hello '
@@ -350,7 +350,7 @@ class VariableManTest {
     }
 
     @Test
-    void naturalConditionFunction(){
+    void if_naturalConditionFunction(){
         /** IF and ELSEIF **/
         assert varman.parse('Hello ${if("1" == "1").add(ADD1)}') == 'Hello ADD1'
         assert varman.parse('Hello ${if("1" == "2").add(ADD1)}') == 'Hello '
@@ -424,7 +424,7 @@ class VariableManTest {
     }
 
     @Test
-    void nullCheckOnIf(){
+    void if_nullCheck(){
         // null_value = null
         assert varman.parse('Hello ${if(null_value == null).add(ADD1)}') == 'Hello ADD1'
         assert varman.parse('Hello ${if(null_value != null).add(ADD1)}') == 'Hello '
@@ -448,8 +448,7 @@ class VariableManTest {
     }
 
     @Test
-    void computeNumbersOnIf(){
-        // null_value = null
+    void if_computeNumbers(){
         assert varman.parse('Hello ${if(1 == 1).add(ADD1)}') == 'Hello ADD1'
         assert varman.parse('Hello ${if(1 < 2).add(ADD1)}') == 'Hello ADD1'
         assert varman.parse('Hello ${if(1 < 512).add(ADD1)}') == 'Hello ADD1'
@@ -457,7 +456,18 @@ class VariableManTest {
         assert varman.parse('Hello ${if(-1 > -3).add(ADD1)}') == 'Hello ADD1'
     }
 
+    @Test
+    void if_file(){
+        //File
+        assert "application-site-op.yml" == varman.parse('application-site-${if(file, "' +testFile.getPath()+ '").add("op").else().add("dev")}.yml')
+        assert "application-site-op.yml" == varman.parse('application-site-${if("' +testFile.getPath()+ '", file~, "system").add("op").else().add("dev")}.yml')
 
+        //Prop
+        assert "application-site-op.yml" == varman.parse('application-site-${if("' +testFile.getPath()+ '!system", prop=, "op").add("op").else().add("dev")}.yml')
+        assert "application-site-op.yml" == varman.parse('application-site-${if("' +testFile.getPath()+ '!system", !prop=, "op1").add("op").else().add("dev")}.yml')
+        assert "application-site-dev.yml" == varman.parse('application-site-${if("' +testFile.getPath()+ '!system", prop=, "op1").add("op").else().add("dev")}.yml')
+
+    }
 
     @Test
     void replaceFunction(){
@@ -482,6 +492,20 @@ class VariableManTest {
         println varman.parse('X${tableName().replaceFirst(^T,"")}${pick(indexSeq, 간,나,하,호,a,b,c,d,e,f,A..Z, 1..100, AA..AZ)}')
         //특정 문자에 맞는 것 다음 것을 선택
         println varman.parse('X${tableName().replaceFirst(^T,"")}${pickNextOf(indexString, A..Z)}')
+    }
+
+    @Test
+    void useValueByKeyFromProperties(){
+        if (!checkTestFile())
+            return
+
+        //- exists
+        assert "application-site-op.yml" == varman.parse('application-site-${prop(' +testFile.getPath()+ ', "system")}.yml')
+        assert "application-site-op.yml" == varman.parse('application-site-${prop(' +testFile.getPath()+ ', "system")}.yml')
+
+        //- not exists
+        assert "application-site-.yml" == varman.parse('application-site-${prop(' +testFile.getPath()+ '.temp, "system")}.yml')
+        assert "application-site-.yml" == varman.parse('application-site-${prop(' +testFile.getPath()+ '.temp, "system")}.yml')
     }
 
 
@@ -644,7 +668,7 @@ class VariableManTest {
 
 
     @Test
-    void someFuncTest(){
+    void additional_funcClosure(){
         Map<String, Closure> funcClosures = [
                 'split-join': { VariableMan.OnePartObject it, Map<String, Object> vsMap, Map<String, Closure> vcMap ->
                     if (it.substitutes && it.members){
@@ -666,13 +690,44 @@ class VariableManTest {
 
     }
 
+    @Test
+    void additional_variableClosure(){
+        if (!checkTestFile())
+            return
 
+        VariableMan variableMan = new VariableMan().setCharset('utf-8').putVariableClosures([
+                'prop': { VariableMan.OnePartObject it, Map<String, Object> vsMap, Map<String, Closure> vcMap ->
+                    if (it.members){
+                        String propFilePath = VariableMan.parseMember(it.members[0], vsMap, vcMap)
+                        String checkPropKey = VariableMan.parseMember(it.members[1], vsMap, vcMap)
+                        Properties prop
+                        String value = ""
+                        try{
+                            prop = new Properties()
+                            prop.load(new File(propFilePath).newInputStream())
+                            value = prop.get(checkPropKey)
+                        }catch(e){
+//                            logger.warn("Error ocurred during loading file ", e)
+                        }
+                        it.substitutes = value
+//                        it.length = it.substitutes.length()
+                        it.length = it.substitutes.getBytes().length
+                    }
+                }
+        ])
 
+        //- exists
+        assert "application-site-op.yml" == variableMan.parse('application-site-${prop(' +testFile.getPath()+ ', "system")}.yml')
+        assert "application-site-op.yml" == variableMan.parse('application-site-${prop(' +testFile.getPath()+ ', "system")}.yml')
 
+        //- not exists
+        assert "application-site-.yml" == variableMan.parse('application-site-${prop(' +testFile.getPath()+ '.temp, "system")}.yml')
+        assert "application-site-.yml" == variableMan.parse('application-site-${prop(' +testFile.getPath()+ '.temp, "system")}.yml')
+    }
 
 
     @Test
-    void additionalConditionTest(){
+    void additional_conditionFuncClosure(){
         if (!checkTestFile())
             return
 
@@ -722,42 +777,6 @@ class VariableManTest {
         assert "application-site-op.yml" == variableMan.parse('application-site-${if("' +testFile.getPath()+ '!system", prop=, "op").add("op").else().add("dev")}.yml')
         assert "application-site-op.yml" == variableMan.parse('application-site-${if("' +testFile.getPath()+ '!system", !prop=, "op1").add("op").else().add("dev")}.yml')
         assert "application-site-dev.yml" == variableMan.parse('application-site-${if("' +testFile.getPath()+ '!system", prop=, "op1").add("op").else().add("dev")}.yml')
-    }
-
-
-    @Test
-    void additionalFuncToCheckPropertiesTest(){
-        if (!checkTestFile())
-            return
-
-        VariableMan variableMan = new VariableMan().setCharset('utf-8').putVariableClosures([
-                'prop': { VariableMan.OnePartObject it, Map<String, Object> vsMap, Map<String, Closure> vcMap ->
-                    if (it.members){
-                        String propFilePath = VariableMan.parseMember(it.members[0], vsMap, vcMap)
-                        String checkPropKey = VariableMan.parseMember(it.members[1], vsMap, vcMap)
-                        Properties prop
-                        String value = ""
-                        try{
-                            prop = new Properties()
-                            prop.load(new File(propFilePath).newInputStream())
-                            value = prop.get(checkPropKey)
-                        }catch(e){
-//                            logger.warn("Error ocurred during loading file ", e)
-                        }
-                        it.substitutes = value
-//                        it.length = it.substitutes.length()
-                        it.length = it.substitutes.getBytes().length
-                    }
-                }
-        ])
-
-        //- exists
-        assert "application-site-op.yml" == variableMan.parse('application-site-${prop(' +testFile.getPath()+ ', "system")}.yml')
-        assert "application-site-op.yml" == variableMan.parse('application-site-${prop(' +testFile.getPath()+ ', "system")}.yml')
-
-        //- not exists
-        assert "application-site-.yml" == variableMan.parse('application-site-${prop(' +testFile.getPath()+ '.temp, "system")}.yml')
-        assert "application-site-.yml" == variableMan.parse('application-site-${prop(' +testFile.getPath()+ '.temp, "system")}.yml')
     }
 
 }
