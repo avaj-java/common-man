@@ -652,7 +652,7 @@ class VariableMan {
         return new VariableMan().setModeExistCodeOnly(true).parse(codeRule)
     }
 
-    String getRightReplacement(String replacement){
+    static String getRightReplacement(String replacement){
         // This Condition's Logic prevent disapearance \
         if (replacement.indexOf('\\') != -1)
             replacement = replacement.replaceAll('\\\\','\\\\\\\\')
@@ -662,18 +662,67 @@ class VariableMan {
         return replacement
     }
 
-    static String parseMember(String member, Map variableStringMap, Map variableClosureMap){
+    static Object parseMember(String member, Map variableStringMap, Map variableClosureMap){
         try{
             if (member){
                 if (member.length() > 1
-                    && ((member.startsWith(charDoubleQuote) && member.endsWith(charDoubleQuote)) || (member.startsWith(charSingleQuote) && member.endsWith(charSingleQuote)))
+                && (
+                    (member.startsWith(charDoubleQuote) && member.endsWith(charDoubleQuote))
+                    ||
+                    (member.startsWith(charSingleQuote) && member.endsWith(charSingleQuote))
+                )
                 ){
                     member = member.substring(1, member.length() -1)
+
+                }else if (member.isNumber()){
+                    if (member.indexOf(".") != -1){
+                        return Double.parseDouble(member)
+                    }else{
+                        return Integer.parseInt(member)
+                    }
+
                 }else{
                     Closure variableClosure = getIgnoreCase(variableClosureMap, member)
                     String variableValue = getIgnoreCase(variableStringMap, member)
                     if (variableClosure != null || variableValue != null){
                         member = new VariableMan(variableStringMap).setModeExistCodeOnly(false).parse( '${' +member+ '}' )
+                    }
+                }
+            }
+
+        }catch(e){
+            logger.error("[VariableMan] faild to parse member", e)
+            throw e
+        }
+        return member
+    }
+
+    static Object parseMemberAsStrict(String member, Map variableStringMap, Map variableClosureMap){
+        try{
+            if (member){
+                if (member.length() > 1
+                && (
+                    (member.startsWith(charDoubleQuote) && member.endsWith(charDoubleQuote))
+                    ||
+                    (member.startsWith(charSingleQuote) && member.endsWith(charSingleQuote))
+                )
+                ){
+                    member = member.substring(1, member.length() - 1)
+
+                }else if (member.isNumber()){
+                    if (member.indexOf(".") != -1){
+                        return Double.parseDouble(member)
+                    }else{
+                        return Integer.parseInt(member)
+                    }
+
+                }else{
+                    Closure variableClosure = getIgnoreCase(variableClosureMap, member)
+                    String variableValue = getIgnoreCase(variableStringMap, member)
+                    if (variableClosure != null || variableValue != null){
+                        member = new VariableMan(variableStringMap).setModeExistCodeOnly(false).parse( '${' +member+ '}' )
+                    }else{
+                        return null
                     }
                 }
             }
@@ -1199,7 +1248,9 @@ class VariableMan {
                  *      - if(A < B)
                  ***************/
                 ['LT', '<']: { valA, valB ->
-                    return (valA != null) ? valA < valB : false;
+                    Number a = (Number) valA
+                    Number b = (Number) valB
+                    return (valA != null) ? a < b : false;
                 },
 
                 /***************
@@ -1210,7 +1261,9 @@ class VariableMan {
                  *      - if(A > B)
                  ***************/
                 ['GT', '>']: { valA, valB ->
-                    return (valA != null) ? valA > valB : false;
+                    Number a = (Number) valA
+                    Number b = (Number) valB
+                    return (valA != null) ? a > b : false;
                 },
 
                 /***************
@@ -1221,7 +1274,9 @@ class VariableMan {
                  *      - if(A <= B)
                  ***************/
                 ['LTE', '<=']: { valA, valB ->
-                    return (valA != null) ? valA <= valB : false;
+                    Number a = (Number) valA
+                    Number b = (Number) valB
+                    return (valA != null) ? a <= b : false;
                 },
 
                 /***************
@@ -1232,7 +1287,9 @@ class VariableMan {
                  *      - if(A >= B)
                  ***************/
                 ['GTE', '>=']: { valA, valB ->
-                    return (valA != null) ? valA >= valB : false;
+                    Number a = (Number) valA
+                    Number b = (Number) valB
+                    return (valA != null) ? a >= b : false;
                 },
 
                 /***************
@@ -1337,13 +1394,13 @@ class VariableMan {
         }else if (memberSize == 2){
             value = alreadyDefinedValue //변수를 먼저 입력 후 Pipeline 방식 IF가 입력될때 value variable로서 인정한다.
             computer = members[0]
-            targetValue = parseMember(members[1], variableStringMap, variableClosureMap)
+            targetValue = parseMemberAsStrict(members[1], variableStringMap, variableClosureMap)
             result = computeOperator(value, computer, targetValue)
 
         }else if (memberSize == 3){
-            value = parseMember(members[0], variableStringMap, variableClosureMap)
+            value = parseMemberAsStrict(members[0], variableStringMap, variableClosureMap)
             computer = members[1]
-            targetValue = parseMember(members[2], variableStringMap, variableClosureMap)
+            targetValue = parseMemberAsStrict(members[2], variableStringMap, variableClosureMap)
             result = computeOperator(value, computer, targetValue)
 
         }else{
@@ -1383,9 +1440,10 @@ class VariableMan {
         return computeAsNaturalOperatingStringInIf(notYetConfirmed, null)
     }
 
-    private boolean computeAsNaturalOperatingStringInIf(String notYetConfirmed, String alreadyDefinedValue){
+    private boolean computeAsNaturalOperatingStringInIf(String notYetConfirmed, Object alreadyDefinedValue){
         boolean result = false
-        String value, computer, targetValue
+        Object value, targetValue
+        String computer
 
         //Quote 인 것들 {} 로 대체하며(다른 Collection에 담아놓기), 문자들 Concat하고 다시 기존 특수문자 Split 진행 후, 담아놓은 대체된 문자들 value로 활용
         List<String> groups = SimpleSplitUtil.separateGroupByQuotes(notYetConfirmed)
@@ -1417,7 +1475,7 @@ class VariableMan {
         if (computer == null){
             switch (memberSize){
                 case 1: //- if(value)
-                    value = parseMember(splitedOperatingLogicalArray[0], variableStringMap, variableClosureMap)
+                    value = parseMemberAsStrict(splitedOperatingLogicalArray[0], variableStringMap, variableClosureMap)
                     result = computeBoolean(value)
                     break;
 
@@ -1429,7 +1487,7 @@ class VariableMan {
         }else{
             switch (memberSize){
                 case 1: //- if(value)
-                    value = parseMember(splitedOperatingLogicalArray[0], variableStringMap, variableClosureMap)
+                    value = parseMemberAsStrict(splitedOperatingLogicalArray[0], variableStringMap, variableClosureMap)
                     result = computeBoolean(value)
                     break;
 
@@ -1438,18 +1496,18 @@ class VariableMan {
                         if (alreadyDefinedValue != null){
                             //- someValue().if(computer value)
                             value = alreadyDefinedValue
-                            targetValue = parseMember(splitedOperatingLogicalArray[1], variableStringMap, variableClosureMap)
+                            targetValue = parseMemberAsStrict(splitedOperatingLogicalArray[1], variableStringMap, variableClosureMap)
                             result = computeOperator(value, computer, targetValue)
                         }else if (computer.startsWith("!") && computer.endsWith("!")){
                             //- if(!value)
-                            value = parseMember(splitedOperatingLogicalArray[1], variableStringMap, variableClosureMap)
+                            value = parseMemberAsStrict(splitedOperatingLogicalArray[1], variableStringMap, variableClosureMap)
                             result = computeBoolean(value)
                             result = computeNegativeMark(result, computer)
                         }
                     }else{
                         //- if (value computer targetValue)
-                        value = parseMember(splitedOperatingLogicalArray[0], variableStringMap, variableClosureMap)
-                        targetValue = parseMember(splitedOperatingLogicalArray[1], variableStringMap, variableClosureMap)
+                        value = parseMemberAsStrict(splitedOperatingLogicalArray[0], variableStringMap, variableClosureMap)
+                        targetValue = parseMemberAsStrict(splitedOperatingLogicalArray[1], variableStringMap, variableClosureMap)
                         result = computeOperator(value, computer, targetValue)
                     }
                     break;
@@ -1487,7 +1545,7 @@ class VariableMan {
         return result
     }
 
-    private boolean computeOperator(String a, String computer, String b){
+    private boolean computeOperator(Object a, String computer, Object b){
         String computerUpper = computer.toUpperCase()
         boolean computerResult = false
         boolean modeNegative = false
