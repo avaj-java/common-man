@@ -254,7 +254,7 @@ class VariableMan {
      */
     VariableMan putVariables(Map<String, Object> variableStringMapToPut){
         if (variableStringMapToPut){
-            if (variableStringMapToPut.values().find{ it instanceof Map || it instanceof List }){
+            if (variableStringMapToPut.values().any{ it instanceof Map || it instanceof List }){
                 logger.trace('Add Variable (from MultiDepth Map)')
                 variableStringMapToPut = toPropertiesMap(variableStringMapToPut)
             }else{
