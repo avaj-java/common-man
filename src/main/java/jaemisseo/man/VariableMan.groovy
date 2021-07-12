@@ -987,6 +987,25 @@ class VariableMan {
                         it.length = it.substitutes.length()
                     }
                 },
+
+                'PROP': { OnePartObject it, Map<String, Object> vsMap, Map<String, Closure> vcMap ->
+                    if (it.members){
+                        String propFilePath = parseMember(it.members[0], vsMap, vcMap)
+                        String checkPropKey = parseMember(it.members[1], vsMap, vcMap)
+                        Properties prop
+                        String value = ""
+                        try{
+                            prop = new Properties()
+                            prop.load(new File(propFilePath).newInputStream())
+                            value = prop.get(checkPropKey)
+                        }catch(e){
+//                            logger.warn("Error ocurred during loading file ", e)
+                        }
+                        it.substitutes = value
+//                        it.length = it.substitutes.length()
+                        it.length = it.substitutes.getBytes().length
+                    }
+                }
         ]
     }
 
@@ -1091,19 +1110,33 @@ class VariableMan {
                     String beforeDateFormat
                     String afterDateFormat
                     if (it.members.size() == 1){
+                        //ex) var().dateformat(yyyymmdd)
                         afterDateFormat = parseMember(it.members[0], vsMap, vcMap)
                         Date dateValue = new SimpleDateFormat(afterDateFormat).parse(it.substitutes)
                         it.substitutes = new SimpleDateFormat(afterDateFormat).format(dateValue)
                     }else if (it.members.size() == 2){
                         beforeDateFormat = parseMember(it.members[0], vsMap, vcMap)
                         afterDateFormat = parseMember(it.members[1], vsMap, vcMap)
-                        Date dateValue = new SimpleDateFormat(beforeDateFormat).parse(it.substitutes)
                         if (afterDateFormat.equals("long")){
+                            //ex) var().dateformat(yyyymmdd, long)
+                            Date dateValue = new SimpleDateFormat(beforeDateFormat).parse(it.substitutes)
                             it.substitutes = dateValue.getTime()
+
+                        }else if (beforeDateFormat.equals("long")){
+                            //ex) var().dateformat(long, yyyymmdd)
+                            if (!it.substitutes)
+                                return
+                            Long time = (it.substitutes instanceof Long) ? it.substitutes : Long.parseLong(it.substitutes)
+                            Date beforeDate = new Date(time)
+                            it.substitutes = new SimpleDateFormat(afterDateFormat).format(beforeDate)
+
                         }else{
+                            //ex) var().dateformat(yyyymmdd, yyyy/mm/dd)
+                            Date dateValue = new SimpleDateFormat(beforeDateFormat).parse(it.substitutes)
                             it.substitutes = new SimpleDateFormat(afterDateFormat).format(dateValue)
                         }
                     }
+                    it.length = it.substitutes.getBytes().length
                 },
 
                 /*************************
@@ -1362,6 +1395,42 @@ class VariableMan {
                  ***************/
                 ['NULL']: { valA, valB ->
                     return (valA == null);
+                },
+
+                /***************
+                 * - A: value
+                 * - B: condition value
+                 * - EX) if(A, computer, B)
+                 ***************/
+                ["FILE-EXISTS", "FILE"]: {  valA, valB ->
+                    return new File(valB).exists()
+                },
+
+                /***************
+                 * - A: value
+                 * - B: condition value
+                 * - EX) if(A, computer, B)
+                 ***************/
+                ["FILE-CONTAINS", "FILE~"]: { valA, valB ->
+                    if (valA == null)
+                        return false
+                    String text = new File(valA).getText()
+                    return (valB != null) ? text.contains(valB) : (text == valB)
+                },
+
+                /***************
+                 * - A: ! 으로 split하여 앞은 파일경로 뒤는 property key
+                 * - B: condition value
+                 * - EX) if(A, computer, B)
+                 ***************/
+                ["PROP-EQUALS", "PROP="]: { valA, valB ->
+                    String[] pathAndPropKey = valA.split("!")
+                    String filePath = pathAndPropKey[0]
+                    String checkPropKey = pathAndPropKey[1]
+                    Properties prop = new Properties()
+                    prop.load(new File(filePath).newInputStream())
+                    String value = prop.get(checkPropKey)
+                    return valB.equals(value)
                 },
         ]
     }
