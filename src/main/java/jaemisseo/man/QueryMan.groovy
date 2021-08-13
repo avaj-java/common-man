@@ -74,7 +74,8 @@ class QueryMan {
     Long pageSize
 
     boolean modeCloseAfter
-    boolean modeMeta
+    boolean modeMeta = false
+    boolean modeAutoQueryForOneRow = true
     boolean modeCountAsInteger
     boolean modeCountAsLong
     boolean modeMax
@@ -505,8 +506,13 @@ class QueryMan {
         return setModeCloseAfter(true)
     }
 
-    QueryMan setModeMeta(boolean modeMeta){
-        this.modeMeta = modeMeta
+    QueryMan setModeMeta(boolean mode){
+        this.modeMeta = mode
+        return this
+    }
+
+    QueryMan setModeAutoQueryForOneRow(boolean mode){
+        this.modeAutoQueryForOneRow = mode
         return this
     }
 
@@ -1065,7 +1071,7 @@ class QueryMan {
 
             /** SELECT META LIST **/
             if (modeMeta) {
-                query = getQueryForOneRow(query)
+                query = (modeAutoQueryForOneRow) ? getQueryForOneRow(query) : query
                 sql.rows(query, values, { meta ->
                     int colCnt = meta.columnCount
                     (1..colCnt).each {
