@@ -56,6 +56,7 @@ class VariableMan {
         putVariableClosures(getBasicVariableClosureMap())
         putFuncs(getBasicFuncMap())
         putConditionFuncs(getBasicConditionFuncMap())
+        putStreamFuncs(getBasicStreamFuncMap())
         putConditionComputerFuncs(getBasicConditionComputerFuncMap())
     }
 
@@ -100,6 +101,7 @@ class VariableMan {
      */
     class OnePartObject {
         String partValue = ''
+        String partContent = ''
         String originalCode = ''
         String valueCode = ''
         String substitutes = ''
@@ -116,10 +118,30 @@ class VariableMan {
         boolean isExistCode = false
         boolean isOver = false
 
+
+        //Condition Method - Stream
+        boolean modeStream = false
+        List<String> reducedList = null
+        StringBuilder virtualRuleBuilderInStream = null;
+
+        Integer okStreamLevel = 0
+        Integer nowStreamLevel = 0
+
+        boolean checkStream(){
+            return this.okStreamLevel == this.nowStreamLevel
+        }
+
+
         //Condition Method - If
         boolean modeIf = false
         Integer okIfSeq = 0
         Integer nowIfSeq = 0
+
+        //Check Condition
+        boolean checkConditionNowSeq(){
+            return this.okIfSeq == this.nowIfSeq
+        }
+
 
         String overValue = ''
         String funcNm = ''
@@ -136,12 +158,15 @@ class VariableMan {
             String[] members = getMember(functionName)
             return members ? members[memberIndex] : null
         }
+
+
     }
 
     Map<String, Object> variableStringMap = [:]
     Map<String, Closure> variableClosureMap = [:]
     Map<String, Closure> funcMap = [:]
     Map<String, Closure> conditionFuncMap = [:]
+    Map<String, Closure> streamFuncMap = [:]
     Map<String, Closure> conditionComputerFuncMap = [:]
 
     boolean modeDebug = false
@@ -334,6 +359,11 @@ class VariableMan {
         return this
     }
 
+    VariableMan putStreamFuncs(Map<String, Closure> funcMapToPut){
+        this.streamFuncMap.putAll(funcMapToPut)
+        return this
+    }
+
     VariableMan putConditionComputerFuncs(Map<Object, Closure> funcMapToPut){
         funcMapToPut.each{ key, value ->
             if (key instanceof String){
@@ -377,6 +407,20 @@ class VariableMan {
 
     Object parseObject(Object codeRule) {
         return parseObject(codeRule, this.variableStringMap)
+    }
+
+    private String parseVirtualRuleContent(String codeRuleContent, Object itItem){
+        OnePartObject partObj = new VariableMan(variableStringMap, variableClosureMap)
+                        .setModeMustExistCodeRule(modeMustExistCodeRule)
+                        .setModeExistCodeOnly(modeExistCodeOnly)
+                        .setModeExistFunctionOnly(modeExistFunctionOnly)
+                        .setCharset(this.getCharset())
+                        .setVariableSign(this.variableSign)
+                        .setModeExistCodeOnly(false)
+                        .putVariables([it:itItem])
+                        .parseCodeContent(codeRuleContent)
+        makePartResult(partObj)
+        return partObj.parsedValue
     }
 
     /**
@@ -500,24 +544,28 @@ class VariableMan {
         logger.trace("..... Remaking Part-Object")
         int index = 0
         partObjectList.each{ OnePartObject partObj ->
-            if (partObj.isCode){
-                if (!partObj.isExistCode && !partObj.substitutes){
-                    partObj.parsedValue = (modeExistCodeOnly && partObj.valueCode) ? partObj.partValue : ''
-                }else{
-                    partObj.parsedValue = partObj.substitutes
-                }
-            }else{
-                partObj.parsedValue = partObj.partValue
-            }
-            byte[] bytes = (charset) ? partObj.parsedValue.getBytes(charset) : partObj.parsedValue.getBytes()
-            partObj.userSetLength = partObj.length
-            partObj.byteLength = bytes.length
-            partObj.charLength = partObj.parsedValue.length()
+            makePartResult(partObj)
             partObj.startIndex = index
             partObj.endIndex = index + partObj.charLength + (partObj.charLength == 0 ? 0 : -1)
             index += partObj.parsedValue.length()
         }
         return partObjectList
+    }
+
+    void makePartResult(OnePartObject partObj){
+        if (partObj.isCode){
+            if (!partObj.isExistCode && !partObj.substitutes){
+                partObj.parsedValue = (modeExistCodeOnly && partObj.valueCode) ? partObj.partValue : ''
+            }else{
+                partObj.parsedValue = partObj.substitutes
+            }
+        }else{
+            partObj.parsedValue = partObj.partValue
+        }
+        byte[] bytes = (charset) ? partObj.parsedValue.getBytes(charset) : partObj.parsedValue.getBytes()
+        partObj.userSetLength = partObj.length
+        partObj.byteLength = bytes.length
+        partObj.charLength = partObj.parsedValue.length()
     }
 
     OnePartObject generateOnePartObjectForString(String partValue){
@@ -528,10 +576,6 @@ class VariableMan {
     }
 
     OnePartObject generateOnePartObjectForVariable(String partValue, Map<String, String> variableStringMap, Map<String, Closure> variableClosureMap){
-        OnePartObject partObj = new OnePartObject()
-        partObj.partValue = partValue
-        partObj.isCode = true
-
         // 1. get String in ${ }
         String content
         if (variableSign){
@@ -542,6 +586,29 @@ class VariableMan {
         validateFunc(content)
 
         // 2. Analysis And Run Function
+        OnePartObject partObj = new OnePartObject()
+        partObj.partValue = partValue
+        partObj.partContent = content
+        partObj.isCode = true
+
+        //- Parse
+        OnePartObject parsedPartObj = parseCodeContent(partObj, variableStringMap, variableClosureMap)
+        return parsedPartObj
+    }
+
+    OnePartObject parseCodeContent(String content){
+        OnePartObject partObj = new OnePartObject()
+        partObj.partValue = new StringBuilder().append(variableSign).append("{").append(content).append("}").toString()
+        partObj.partContent = content
+        partObj.isCode = true
+
+        //- Parse
+        OnePartObject parsedPartObj = parseCodeContent(partObj, this.variableStringMap, this.variableClosureMap)
+        return parsedPartObj
+    }
+
+    OnePartObject parseCodeContent(OnePartObject partObj, Map<String, String> variableStringMap, Map<String, Closure> variableClosureMap){
+        String content = partObj.partContent
         List<String> funcs = content?.split(patternToSeperateFuncs)?.toList()
         int variableEndIndex = funcs.findIndexOf{ it.indexOf('(') != -1 }
         int endIndex = funcs.size() -1
@@ -560,6 +627,7 @@ class VariableMan {
         }else{
             funcs << 'RIGHT()'
         }
+
         funcs.eachWithIndex{ String oneFunc, int procIdx ->
             // run variable or func
             String funcNm = getFuncNameFromOneFunc(oneFunc)
@@ -569,10 +637,18 @@ class VariableMan {
                 partObj.funcNm = funcNm
                 partObj.members = getMemebersFromOneFunc(oneFunc)
 
-                //- Check ConditionFUnc
+                //- Check ConditionFunc
                 if ( getIgnoreCase(conditionFuncMap, funcNm) ) {
                     try{
                         runConditionFunc(partObj, variableStringMap, variableClosureMap)
+                    }catch(e){
+                        throw e
+                    }
+
+                //- Check StreamFunc
+                }else if ( getIgnoreCase(streamFuncMap, funcNm) ) {
+                    try{
+                        runStreamFunc(partObj, variableStringMap, variableClosureMap)
                     }catch(e){
                         throw e
                     }
@@ -589,12 +665,21 @@ class VariableMan {
                         try{
                             partObj.funcNameMemberListMap = partObj.funcNameMemberListMap ?: [:]
                             partObj.funcNameMemberListMap[funcNm] = partObj.members
-                            if (partObj.modeIf){
-                                if (partObj.okIfSeq == partObj.nowIfSeq)
+                            if (partObj.modeStream){
+                                //1) Stream 영역 내용 수집
+                                if (partObj.checkStream()){
+                                    //2) Collecting
+                                    partObj.virtualRuleBuilderInStream.append(".").append( oneFunc )
+                                }
+
+                            }else if (partObj.modeIf){
+                                if (partObj.checkConditionNowSeq())
                                     runFunc(partObj, variableStringMap, variableClosureMap)
+
                             }else{
                                 runFunc(partObj, variableStringMap, variableClosureMap)
                             }
+
                         }catch(e){
                             throw e
                         }
@@ -822,6 +907,11 @@ class VariableMan {
             closure(partObj, variableStringMap, variableClosureMap)
     }
 
+    void runStreamFunc(OnePartObject partObj, Map<String, String> variableStringMap, Map<String, Closure> variableClosureMap){
+        Closure closure = getIgnoreCase(this.streamFuncMap, partObj.funcNm)
+        if (closure)
+            closure(partObj, variableStringMap, variableClosureMap)
+    }
 
 
 
@@ -875,6 +965,10 @@ class VariableMan {
      */
     Map<String, Closure> getBasicVariableClosureMap(){
         return [
+                'EMPTY': { OnePartObject it, Map<String, Object> vsMap, Map<String, Closure> vcMap ->
+                    it.substitutes = ""
+                    it.length = 0
+                },
                 'DATE': { OnePartObject it, Map<String, Object> vsMap, Map<String, Closure> vcMap ->
                     String[] members = it.members
                     String format = (members && members[0]) ? members[0] : 'yyyyMMdd'
@@ -1194,9 +1288,9 @@ class VariableMan {
                     }
                 },
                 'JOIN': { OnePartObject it, Map<String, Object> vsMap, Map<String, Closure> vcMap ->
-                    if (it.substitutes && it.members){
+                    if ( (it.substitutes || it.reducedList) && it.members ){
                         String seperator = parseMember(it.members[0], vsMap, vcMap)
-                        Object rawObjectValue = (it.originalValue != null) ? it.originalValue : vsMap[it.originalCode]
+                        Object rawObjectValue = (it.reducedList != null) ? it.reducedList : (it.originalValue != null) ? it.originalValue : vsMap[it.originalCode]
                         if (rawObjectValue instanceof List){
                             it.substitutes = rawObjectValue.join(seperator)
                         }
@@ -1242,6 +1336,47 @@ class VariableMan {
                     it.modeIf = false
                     it.okIfSeq = 0
                     it.nowIfSeq = 0
+                },
+        ]
+    }
+
+    Map<List<String>, Closure> getBasicStreamFuncMap(){
+        return [
+                /*************************
+                 * Stream
+                 *************************/
+                'STREAM': { OnePartObject it, Map<String, String> vsMap, Map<String, Closure> vcMap ->
+                    it.modeStream = true
+                    it.okStreamLevel = 0
+                    it.nowStreamLevel = 1
+                    if (it.modeStream){
+                        it.okStreamLevel = it.nowStreamLevel;
+                        it.virtualRuleBuilderInStream = new StringBuilder().append("empty()");
+                        it.originalCode = it.originalCode ?: it.members[0]
+                        it.originalValue = getIgnoreCase(vsMap, it.originalCode);
+                        it.reducedList = [];
+                    }
+                },
+                'ENDSTREAM': { OnePartObject it, Map<String, String> vsMap, Map<String, Closure> vcMap ->
+                    it.modeStream = false
+                    it.okStreamLevel = 0
+                    it.nowStreamLevel = 0
+                    if (!it.modeStream){
+                        //3) End 일때 새롭게 파싱
+                        String virtualRuleContent = it.virtualRuleBuilderInStream;
+                        Object originalValue = it.originalValue
+                        if (originalValue instanceof List){
+                            for (Object item : originalValue){
+                                String reducedParsedResult = parseVirtualRuleContent(virtualRuleContent, item)
+                                it.reducedList.add( reducedParsedResult )
+                            }
+                        }else if (originalValue instanceof Map){
+                            for (Object item : originalValue){
+                                String reducedParsedResult = parseVirtualRuleContent(virtualRuleContent, item)
+                                it.reducedList.add( reducedParsedResult )
+                            }
+                        }
+                    }
                 },
         ]
     }
