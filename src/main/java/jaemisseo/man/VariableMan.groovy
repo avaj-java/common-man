@@ -121,7 +121,7 @@ class VariableMan {
 
         //Condition Method - Stream
         boolean modeStream = false
-        List<String> reducedList = null
+        List<String> reducedCollection = null
         StringBuilder virtualRuleBuilderInStream = null;
 
         Integer okStreamLevel = 0
@@ -639,10 +639,14 @@ class VariableMan {
 
                 //- Check ConditionFunc
                 if ( getIgnoreCase(conditionFuncMap, funcNm) ) {
-                    try{
-                        runConditionFunc(partObj, variableStringMap, variableClosureMap)
-                    }catch(e){
-                        throw e
+                    if (partObj.modeStream) {
+                        collectStreamContents(partObj, oneFunc)
+                    }else{
+                        try{
+                            runConditionFunc(partObj, variableStringMap, variableClosureMap)
+                        }catch(e){
+                            throw e
+                        }
                     }
 
                 //- Check StreamFunc
@@ -666,11 +670,7 @@ class VariableMan {
                             partObj.funcNameMemberListMap = partObj.funcNameMemberListMap ?: [:]
                             partObj.funcNameMemberListMap[funcNm] = partObj.members
                             if (partObj.modeStream){
-                                //1) Stream 영역 내용 수집
-                                if (partObj.checkStream()){
-                                    //2) Collecting
-                                    partObj.virtualRuleBuilderInStream.append(".").append( oneFunc )
-                                }
+                                collectStreamContents(partObj, oneFunc)
 
                             }else if (partObj.modeIf){
                                 if (partObj.checkConditionNowSeq())
@@ -697,6 +697,16 @@ class VariableMan {
             }
         }
         return partObj
+    }
+
+    private boolean collectStreamContents(OnePartObject partObj, String oneFunc){
+        boolean correctLevel = partObj.checkStream()
+        //1) Stream 영역 내용 수집
+        if (correctLevel){
+            //2) Collecting
+            partObj.virtualRuleBuilderInStream.append(".").append( oneFunc )
+        }
+        return correctLevel
     }
 
     private String getFuncNameFromOneFunc(String oneFunc){
@@ -783,6 +793,7 @@ class VariableMan {
     }
 
     static Object parseMemberAsStrict(String member, Map variableStringMap, Map variableClosureMap){
+        Object memberValue
         try{
             if (member){
                 if (member.length() > 1
@@ -792,22 +803,24 @@ class VariableMan {
                     (member.startsWith(charSingleQuote) && member.endsWith(charSingleQuote))
                 )
                 ){
-                    member = member.substring(1, member.length() - 1)
+                    memberValue = member.substring(1, member.length() - 1)
 
                 }else if (member.isNumber()){
                     if (member.indexOf(".") != -1){
-                        return Double.parseDouble(member)
+                        memberValue = Double.parseDouble(member)
                     }else{
-                        return Integer.parseInt(member)
+                        memberValue = Integer.parseInt(member)
                     }
 
                 }else{
                     Closure variableClosure = getIgnoreCase(variableClosureMap, member)
-                    String variableValue = getIgnoreCase(variableStringMap, member)
-                    if (variableClosure != null || variableValue != null){
-                        member = new VariableMan(variableStringMap).setModeExistCodeOnly(false).parse( '${' +member+ '}' )
+                    Object variableValue = getIgnoreCase(variableStringMap, member)
+                    if (containsKeyIgnoreCase(variableStringMap, member)){
+                        memberValue = variableValue
+                    }else if (variableClosure != null || variableValue != null){
+                        memberValue = new VariableMan(variableStringMap).setModeExistCodeOnly(false).parse( '${' +member+ '}' )
                     }else{
-                        return null
+                        memberValue = null
                     }
                 }
             }
@@ -815,7 +828,7 @@ class VariableMan {
             logger.error("[VariableMan] faild to parse member", e)
             throw e
         }
-        return member
+        return memberValue
     }
 
 
@@ -1288,9 +1301,9 @@ class VariableMan {
                     }
                 },
                 'JOIN': { OnePartObject it, Map<String, Object> vsMap, Map<String, Closure> vcMap ->
-                    if ( (it.substitutes || it.reducedList) && it.members ){
+                    if ( (it.substitutes || it.reducedCollection) && it.members ){
                         String seperator = parseMember(it.members[0], vsMap, vcMap)
-                        Object rawObjectValue = (it.reducedList != null) ? it.reducedList : (it.originalValue != null) ? it.originalValue : vsMap[it.originalCode]
+                        Object rawObjectValue = (it.reducedCollection != null) ? it.reducedCollection : (it.originalValue != null) ? it.originalValue : vsMap[it.originalCode]
                         if (rawObjectValue instanceof List){
                             it.substitutes = rawObjectValue.join(seperator)
                         }
@@ -1345,36 +1358,84 @@ class VariableMan {
                 /*************************
                  * Stream
                  *************************/
-                'STREAM': { OnePartObject it, Map<String, String> vsMap, Map<String, Closure> vcMap ->
-                    it.modeStream = true
-                    it.okStreamLevel = 0
-                    it.nowStreamLevel = 1
-                    if (it.modeStream){
-                        it.okStreamLevel = it.nowStreamLevel;
-                        it.virtualRuleBuilderInStream = new StringBuilder().append("empty()");
-                        it.originalCode = it.originalCode ?: it.members[0]
-                        it.originalValue = getIgnoreCase(vsMap, it.originalCode);
-                        it.reducedList = [];
+                'STREAM': { OnePartObject part, Map<String, String> vsMap, Map<String, Closure> vcMap ->
+                    part.modeStream = true
+                    part.okStreamLevel = 0
+                    part.nowStreamLevel = 1
+                    if (part.modeStream){
+                        part.okStreamLevel = part.nowStreamLevel;
+                        part.virtualRuleBuilderInStream = new StringBuilder().append("empty()");
+                        part.originalCode = part.originalCode ?: part.members[0]
+                        part.originalValue = getIgnoreCase(vsMap, part.originalCode);
+                        //Copy Collection
+                        if (part.originalValue instanceof List){
+                            List<?> originList = part.originalValue
+                            int size = originList.size();
+                            List<?> reducedCollection = new ArrayList<>(originList);
+                            Collections.copy(reducedCollection, originList);
+                            part.reducedCollection = reducedCollection
+                        }else if (part.originalValue instanceof Map){
+                            Map originMap = part.originalValue
+                            part.reducedCollection = new HashMap(originMap);
+                        }
                     }
                 },
-                'ENDSTREAM': { OnePartObject it, Map<String, String> vsMap, Map<String, Closure> vcMap ->
-                    it.modeStream = false
-                    it.okStreamLevel = 0
-                    it.nowStreamLevel = 0
-                    if (!it.modeStream){
+                'FILTER': { OnePartObject part, Map<String, String> vsMap, Map<String, Closure> vcMap ->
+                    if (part.modeStream){
+                        if (part.reducedCollection instanceof List){
+                            List list = part.reducedCollection
+                            List newList = new ArrayList<>();
+                            Object some = null;
+                            Object itBefore = vsMap.get("it");
+                            for (int i=0; i<list.size(); i++){
+                                some = list.get(i);
+                                vsMap.put("it", some);
+                                if (computeAsMemberArrayInIf(part.members, some))
+                                    newList.add(some);
+                            }
+                            vsMap.put("it", itBefore);
+                            part.reducedCollection = newList;
+
+                        }else (part.reducedCollection instanceof Map){
+                            Map map = it.reducedCollection
+                            Map newMap = new HashMap<>();
+                            Iterator iter = map.iterator()
+                            Object some = null;
+                            Object itBefore = vsMap.get("it");
+                            while (iter.hasNext()){
+                                some = iter.next();
+                                vsMap.put("it", some);
+                                if (computeAsMemberArrayInIf(part.members, some))
+                                    newMap.put(some);
+                            }
+                            vsMap.put("it", itBefore);
+                            part.reducedCollection = newMap;
+                        }
+
+                    }
+                },
+                'ENDSTREAM': { OnePartObject part, Map<String, String> vsMap, Map<String, Closure> vcMap ->
+                    part.modeStream = false
+                    part.okStreamLevel = 0
+                    part.nowStreamLevel = 0
+                    if (!part.modeStream){
                         //3) End 일때 새롭게 파싱
-                        String virtualRuleContent = it.virtualRuleBuilderInStream;
-                        Object originalValue = it.originalValue
-                        if (originalValue instanceof List){
-                            for (Object item : originalValue){
-                                String reducedParsedResult = parseVirtualRuleContent(virtualRuleContent, item)
-                                it.reducedList.add( reducedParsedResult )
+                        String virtualRuleContent = part.virtualRuleBuilderInStream;
+                        Object beforeReducedCollection = part.reducedCollection
+                        if (beforeReducedCollection instanceof List){
+                            List<?> afterReducedCollection = new ArrayList<>();
+                            for (Object beforeReducedItem : beforeReducedCollection){
+                                String reducedParsedResult = parseVirtualRuleContent(virtualRuleContent, beforeReducedItem)
+                                afterReducedCollection.add( reducedParsedResult )
                             }
-                        }else if (originalValue instanceof Map){
-                            for (Object item : originalValue){
+                            part.reducedCollection = afterReducedCollection
+                        }else if (beforeReducedCollection instanceof Map){
+                            Map<?> afterReducedCollection = new HashMap<>();
+                            for (Object item : beforeReducedCollection){
                                 String reducedParsedResult = parseVirtualRuleContent(virtualRuleContent, item)
-                                it.reducedList.add( reducedParsedResult )
+                                afterReducedCollection.put( item, reducedParsedResult )
                             }
+                            part.reducedCollection = afterReducedCollection
                         }
                     }
                 },
@@ -1571,15 +1632,12 @@ class VariableMan {
     }
 
 
-    private boolean checkConditionFunction(OnePartObject it, Map<String, String> variableStringMap, Map<String, Closure> variableClosureMap){
-        int memberSize = it.members.size()
-        String value, computer, targetValue
-
-        value = it.substitutes ?: getIgnoreCase(variableStringMap, it.valueCode)
-        return computeAsMemberArrayInIf(it.members, value)
+    private boolean checkConditionFunction(OnePartObject part, Map<String, String> variableStringMap, Map<String, Closure> variableClosureMap){
+        String value = part.substitutes ?: getIgnoreCase(variableStringMap, part.valueCode)
+        return computeAsMemberArrayInIf(part.members, value)
     }
 
-    private boolean computeAsMemberArrayInIf(String[] members, String alreadyDefinedValue){
+    private boolean computeAsMemberArrayInIf(String[] members, Object alreadyDefinedValue){
         boolean result = false
         int memberSize = members.size()
         String value, computer, targetValue
@@ -1725,7 +1783,7 @@ class VariableMan {
         return result
     }
 
-    private boolean computeBoolean(String variable){
+    private boolean computeBoolean(Object variable){
         //List,Map 등은 Size !0 //String !EmptyString, Integer,Long은 !0
         return !!variable
     }
@@ -1784,7 +1842,7 @@ class VariableMan {
             return false
     }
 
-    private boolean containsKeyIgnoreCase(Map map, String key){
+    private static boolean containsKeyIgnoreCase(Map map, String key){
         key = key.toUpperCase()
         List resultKeys = map.keySet().findAll{ String itKey ->
             itKey.toUpperCase().contains(key)
@@ -1795,14 +1853,14 @@ class VariableMan {
             return false
     }
 
-    private static def getIgnoreCase(Map map, String key){
+    private static Object getIgnoreCase(Map map, String key){
         key = key.toUpperCase()
         List resultKeys = map.keySet().findAll{ String itKey ->
             itKey.toUpperCase().equals(key)
         }.toList()
         if (resultKeys && resultKeys.size() > 0){
             key = resultKeys[0]
-            return map[key]
+            return map.get(key);
         }else{
             return null
         }

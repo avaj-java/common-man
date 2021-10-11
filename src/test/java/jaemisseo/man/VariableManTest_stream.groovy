@@ -63,7 +63,10 @@ class VariableManTest_stream {
                 listTest: [
                     1,2,3,4,111,2222,1155,'Hehehe'
                 ],
-                listEmptyTest: []
+                listEmptyTest: [],
+                nullOneNullTwoList: [
+                        null, 1, null, 2
+                ],
         ])
 //        .setModeDebug(true)
 
@@ -124,6 +127,34 @@ class VariableManTest_stream {
         assert '123  321' == varman.parse('123 ${stream(listEmptyTest).add("<a href="#/search?search=%23").add(it).add("\"").add(">#").add(it).add("</a>").endstream().join("")} 321')
         assert '' == varman.parse('${listEmptyTest().stream().add("<a href="#/search?search=%23").add(it).add("\"").add(">#").add(it).add("</a>").endstream().join(", ")}')
     }
+
+    @Test
+    void stream_join_with_if(){
+        String result = "";
+
+        //Just if
+        result = varman.parse('^^ ${stream(nullOneNullTwoList).if( it ).add("<a href="#/search?search=%23").add(it).add("\"").add(">#").add(it).add("</a>").endstream().join(", ")} ^^')
+        assert result == '^^ , <a href="#/search?search=%231">#1</a>, , <a href="#/search?search=%232">#2</a> ^^'
+    }
+
+    @Test
+    void stream_join_with_filter(){
+        String result = "";
+
+        //Just it
+        result = varman.parse('^^ ${stream(nullOneNullTwoList).filter( it ).add("<a href="#/search?search=%23").add(it).add("\"").add(">#").add(it).add("</a>").endstream().join(", ")} ^^')
+        assert result == '^^ <a href="#/search?search=%231">#1</a>, <a href="#/search?search=%232">#2</a> ^^'
+
+        //Just it == 1
+        result = varman.parse('^^ ${stream(nullOneNullTwoList).filter( it == 1 ).add("<a href="#/search?search=%23").add(it).add("\"").add(">#").add(it).add("</a>").endstream().join(", ")} ^^')
+        assert result == '^^ <a href="#/search?search=%231">#1</a> ^^'
+
+        //Just it == 2
+        result = varman.parse('^^ ${stream(nullOneNullTwoList).filter( it == 2 ).add("<a href="#/search?search=%23").add(it).add("\"").add(">#").add(it).add("</a>").endstream().join(", ")} ^^')
+        assert result == '^^ <a href="#/search?search=%232">#2</a> ^^'
+    }
+
+
 
     @Test
     void stream_virtual_area(){
