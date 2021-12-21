@@ -4,7 +4,7 @@ apply plugin: 'groovy'
 apply plugin: 'java'
 apply plugin: 'idea'
 
-sourceCompatibility = JavaVersion.VERSION_1_6
+sourceCompatibility = JavaVersion.VERSION_1_8
 
 /*************************
  * If Parent Gradle is modeRemoteDependencies,
@@ -49,9 +49,11 @@ repositories {
     maven { url "http://maven.springframework.org/release" }
 }
 
+String coreBasePath = project.hasProperty("coreBasePath") ? project.getProperty("coreBasePath") : ""
+
 dependencies {
 
-    compile ( (rootProject?.findProject('common-util')) ? project(':common-util') : 'com.github.avaj-java:common-util:0.4.1' )
+    compile ( (rootProject?.findProject("${coreBasePath}:common-util")) ? project(":${coreBasePath}:common-util") : 'com.github.avaj-java:common-util:0.4.1' )
 
     //SLF4j
     compile 'org.slf4j:slf4j-api:1.7.7'

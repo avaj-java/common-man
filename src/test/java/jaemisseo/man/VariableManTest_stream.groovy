@@ -135,26 +135,66 @@ class VariableManTest_stream {
         //Just if
         result = varman.parse('^^ ${stream(nullOneNullTwoList).if( it ).add("<a href="#/search?search=%23").add(it).add("\"").add(">#").add(it).add("</a>").endstream().join(", ")} ^^')
         assert result == '^^ , <a href="#/search?search=%231">#1</a>, , <a href="#/search?search=%232">#2</a> ^^'
+
+        //Just if2
+        result = varman.parse('^^ ${stream(nullOneNullTwoList).add("HI").if( it ).add("A").add(it).add("B").endstream().join(", ")} ^^')
+        assert result == '^^ HI, HIA1B, HI, HIA2B ^^'
+
+        //Just if3
+        result = varman.parse('^^ ${stream(nullOneNullTwoList).add("HI").if( it == 1 ).add("A").add(it).else().add(it).add("B").add("C").add("D").endstream().join(", ")} ^^')
+        assert result == '^^ HIitBCD, HIA1, HIitBCD, HI2BCD ^^'
+
+        //Just if4
+        result = varman.parse('^^ ${stream(nullOneNullTwoList).add("HI").if(it == 1).add("A").add(it).elseif(it == 2).add(it).add("B").else().add(it).add("C").endif().add(it).add("Z").endstream().join(", ")} ^^')
+        assert result == '^^ HIitCitZ, HIA11Z, HIitCitZ, HI2B2Z ^^'
     }
 
     @Test
     void stream_join_with_filter(){
         String result = "";
 
-        //Just it
+        //Filter List
         result = varman.parse('^^ ${stream(nullOneNullTwoList).filter( it ).add("<a href="#/search?search=%23").add(it).add("\"").add(">#").add(it).add("</a>").endstream().join(", ")} ^^')
         assert result == '^^ <a href="#/search?search=%231">#1</a>, <a href="#/search?search=%232">#2</a> ^^'
 
-        //Just it == 1
+        //Filter List: it == 1
         result = varman.parse('^^ ${stream(nullOneNullTwoList).filter( it == 1 ).add("<a href="#/search?search=%23").add(it).add("\"").add(">#").add(it).add("</a>").endstream().join(", ")} ^^')
         assert result == '^^ <a href="#/search?search=%231">#1</a> ^^'
 
-        //Just it == 2
+        //Filter List: it == 2
         result = varman.parse('^^ ${stream(nullOneNullTwoList).filter( it == 2 ).add("<a href="#/search?search=%23").add(it).add("\"").add(">#").add(it).add("</a>").endstream().join(", ")} ^^')
         assert result == '^^ <a href="#/search?search=%232">#2</a> ^^'
+
+        //Filter List<Map>
+
+        //Filter List<Map>: [].a == 1
+
+        //Filter List<Map>: [].b == 2
+
+
+        //Filter Map
+
+        //Filter Map: it.key == 1
+
+        //Filter Map: it.value == 2
     }
 
-
+//    @Test
+//    void stream_join_with_sorted(){
+//        String result = "";
+//
+//        //Sort List
+//        result = varman.parse('^^ ${stream(nullOneNullTwoList).filter( it ).sorted( a > b ).add("<a href="#/search?search=%23").add(it).add("\"").add(">#").add(it).add("</a>").endstream().join(", ")} ^^')
+//        assert result == '^^ <a href="#/search?search=%231">#1</a>, <a href="#/search?search=%232">#2</a> ^^'
+//
+//        //Just List: it == 1
+//        result = varman.parse('^^ ${stream(nullOneNullTwoList).filter( it == 1 ).add("<a href="#/search?search=%23").add(it).add("\"").add(">#").add(it).add("</a>").endstream().join(", ")} ^^')
+//        assert result == '^^ <a href="#/search?search=%231">#1</a> ^^'
+//
+//        //Just List: it == 2
+//        result = varman.parse('^^ ${stream(nullOneNullTwoList).filter( it == 2 ).add("<a href="#/search?search=%23").add(it).add("\"").add(">#").add(it).add("</a>").endstream().join(", ")} ^^')
+//        assert result == '^^ <a href="#/search?search=%232">#2</a> ^^'
+//    }
 
     @Test
     void stream_virtual_area(){

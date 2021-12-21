@@ -143,6 +143,11 @@ class PropMan {
         return (!value) ? null : (value != '0' && value != 'false') ? true : false
     }
 
+    Boolean getBoolean(String key, boolean defaultValue){
+        Boolean value = getBoolean(key)
+        return (value == null) ? defaultValue : value
+    }
+
     Boolean getBoolean(List<String> keyList){
         return keyList.findAll{ key -> getBoolean(key) }.size() > 0
     }
