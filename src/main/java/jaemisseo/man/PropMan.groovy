@@ -254,16 +254,30 @@ class PropMan {
      * read From resource file(PROPERTIES)
      *************************/
     PropMan readResource(String resourcePath){
+        String name = "/${resourcePath}";
+//        File resourceFile = getFileFromResource(resourcePath)
+
         //Works in IDE
 //        URL url = getClass().getResource(resourcePath);
         URL url = Thread.currentThread().getContextClassLoader().getResource(resourcePath)
         int fileNameLastDotIndex = resourcePath.lastIndexOf('.')
         String fileNameExtension = (fileNameLastDotIndex != -1) ? resourcePath.substring(fileNameLastDotIndex +1)?.toLowerCase() : ''
         File file
-        if (url.toString().startsWith("jar:")){
+        if (!url){
+            file = null
+        }else if (url.toString().startsWith("jar:")){
             //Works in JAR
             try {
-                InputStream input = getClass().getResourceAsStream("/${resourcePath}") ?: Thread.currentThread().getContextClassLoader().getResourceAsStream("/${resourcePath}");
+                InputStream input = getClass().getResourceAsStream(name) ;
+                input = input != null ? input : Thread.currentThread().getContextClassLoader().getResourceAsStream(name);
+                input = input != null ? input : getClass().getResourceAsStream(resourcePath);
+                if (getClass().getClassLoader()){
+                    input = input != null ? input : getClass().getClassLoader().getResourceAsStream(resourcePath);
+                }
+
+                if (input == null)
+                    throw new Exception("Does not exists file from resource [${resourcePath}]");
+
                 file = File.createTempFile("tempfile", ".${fileNameExtension}")
                 OutputStream out = new FileOutputStream(file)
                 int len
@@ -280,8 +294,15 @@ class PropMan {
             file = new File(url.getFile())
         }
         if (file != null && !file.exists())
-            throw new RuntimeException("Error: File " + file + " not found!")
+            throw new FileNotFoundException("Error: File " + file + " not found!")
+
+        File resourceFile = file
+
+//        if (resourceFile == null)
+//            throw new Exception("Does not exists file from resource. [${resourcePath}]")
+
         load(file)
+
         return this
     }
 
@@ -462,31 +483,31 @@ class PropMan {
      * Merge Only New Property
      *
      *************************/
-    PropMan mergeNew(String filePath){
+    PropMan mergeOnlyNew(String filePath){
         return mergeFileNew(filePath)
     }
 
     PropMan mergeFileNew(String filePath){
         String absolutePath = getFullPath(filePath)
         Properties properties = new PropMan(absolutePath).properties
-        return mergeNew(properties)
+        return mergeOnlyNew(properties)
     }
 
     PropMan mergeResourceNew(String resourcePath){
         Properties properties = new PropMan().readResource(resourcePath).properties
-        return mergeNew(properties)
+        return mergeOnlyNew(properties)
     }
 
-    PropMan mergeNew(PropMan otherPropman){
-        return mergeNew( otherPropman.properties )
+    PropMan mergeOnlyNew(PropMan otherPropman){
+        return mergeOnlyNew( otherPropman.properties )
     }
 
-    PropMan mergeNew(Properties otherProperties){
+    PropMan mergeOnlyNew(Properties otherProperties){
         Map propMap = otherProperties
-        return mergeNew( (Map) propMap )
+        return mergeOnlyNew( (Map) propMap )
     }
 
-    PropMan mergeNew(Map propMap){
+    PropMan mergeOnlyNew(Map propMap){
         propMap.each{
             if (properties[it.key] == null)
                 properties[it.key] = it.value

@@ -53,7 +53,7 @@ String coreBasePath = project.hasProperty("coreBasePath") ? project.getProperty(
 
 dependencies {
 
-    compile ( (rootProject?.findProject("${coreBasePath}:common-util")) ? project(":${coreBasePath}:common-util") : 'com.github.avaj-java:common-util:0.4.1' )
+    compile ( (rootProject?.findProject("${coreBasePath}:common-util")) ? project(":${coreBasePath}:common-util") : 'com.github.avaj-java:common-util:0.4.2' )
 
     //SLF4j
     compile 'org.slf4j:slf4j-api:1.7.7'

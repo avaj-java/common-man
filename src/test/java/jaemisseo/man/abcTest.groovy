@@ -2,6 +2,8 @@ package jaemisseo.man
 
 import org.junit.Test
 
+import java.text.SimpleDateFormat
+
 /**
  * Created by sujkim on 2017-02-26.
  */
@@ -24,7 +26,12 @@ class abcTest {
 
     @Test
     void "date format"(){
-        println "${new Date().format('yyyyMMddHHmmssSSS')}"
+        Date date = new Date()
+
+        String javaFormated = date.format('yyyyMMddHHmmssSSS')
+        String groovyFormated = new SimpleDateFormat('yyyyMMddHHmmssSSS').format(date)
+
+        assert javaFormated == groovyFormated
     }
 
 
