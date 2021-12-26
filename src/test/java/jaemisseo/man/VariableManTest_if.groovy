@@ -269,6 +269,12 @@ class VariableManTest_if {
 
     @Test
     void if_file(){
+        if (!testFile.exists()){
+            println "!!! testFile ${testFile?.getPath()} does not exists. !!!"
+            return
+        }
+
+
         //File
         assert "application-site-op.yml" == varman.parse('application-site-${if(file, "' +testFile.getPath()+ '").add("op").else().add("dev")}.yml')
         assert "application-site-op.yml" == varman.parse('application-site-${if("' +testFile.getPath()+ '", file~, "system").add("op").else().add("dev")}.yml')
