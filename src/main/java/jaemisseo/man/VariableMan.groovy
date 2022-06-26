@@ -63,14 +63,14 @@ class VariableMan {
     /**
      * Error Message
      */
-    final String VAR1 = "Doesn't Exist Code Rule."
-    final String VAR2 = "Code Number Exceeds Limit."
-    final String VAR3 = "It Needs Number Type Value To Set Length."
-    final String VAR4 = "It is Unknown Code Rule's Function."
-    final String VAR5 = "It Has Bad Syntax."
-    final String VAR6 = "It Has Bad Syntax - brace does not match."
-    final String VAR7 = "It Has Bad Syntax - bracket does not match."
-    final String VAR8 = "It Has Bad Syntax - nothing beetween braces."
+    static final String VAR1 = "Doesn't Exist Code Rule."
+    static final String VAR2 = "Code Number Exceeds Limit."
+    static final String VAR3 = "It Needs Number Type Value To Set Length."
+    static final String VAR4 = "It is Unknown Code Rule's Function."
+    static final String VAR5 = "It Has Bad Syntax."
+    static final String VAR6 = "It Has Bad Syntax - brace does not match."
+    static final String VAR7 = "It Has Bad Syntax - bracket does not match."
+    static final String VAR8 = "It Has Bad Syntax - nothing beetween braces."
 
 //    enum ErrorMessage{
 //        VAR1(1, "Doesn't Exist Code Rule."),
@@ -391,6 +391,8 @@ class VariableMan {
         return this
     }
 
+
+
     /**
      * Parse !!!
      * @param codeRule
@@ -423,6 +425,8 @@ class VariableMan {
         return partObj.parsedValue
     }
 
+
+
     /**
      * Parse !!!
      * @param codeRule
@@ -443,7 +447,13 @@ class VariableMan {
 
     String parseString(String codeRule, Map<String, String> variableStringMap) {
         logger.trace("......................... Start parse string: ${codeRule}")
+
+        //- Validation
+        validateCodeRule(codeRule)
+
+        //- Parse data
         List<OnePartObject> partObjectList = parsedDataList(codeRule, variableStringMap)
+
         logger.trace("..... Creating String Data from Parsed Data")
         int allCharLength = 0
         int allByteLength = 0
@@ -506,6 +516,67 @@ class VariableMan {
     }
 
 
+    Map<String, String> matchVariableMap(String codeRule, String targetString) {
+        Map<String, String> variableStringMap = [:];
+
+        //- Validation
+        validateCodeRule(codeRule, true)
+
+        //- Get String In ${ } step by step
+        List<OnePartObject> partObjects = parsedDataList(codeRule)
+        String regex = codeRuleToPattern(partObjects)
+        Pattern pattern = Pattern.compile(regex)
+        Matcher matcher = pattern.matcher( targetString )
+
+        //- Put captured values
+        boolean matched = matcher.matches()
+        Integer groupCount = matcher.groupCount()
+        boolean thisIsCapturePattern = matched && groupCount > 0
+        if (thisIsCapturePattern){
+            partObjects.each{
+                if (it.isCode){
+                    String capturedValue = matcher.group(it.valueCode)
+                    variableStringMap.put(it.valueCode, capturedValue)
+                }
+            }
+
+        }
+
+        return variableStringMap
+    }
+
+    //- Variable(${}) to REGEX(.*)
+    String codeRuleToPattern(List<OnePartObject> partObjectList){
+        StringBuilder sb = new StringBuilder();
+        partObjectList.eachWithIndex{ part, i ->
+            if (part.isCode){
+                sb.append("(?<").append(part.valueCode).append(">.*)")
+            }else{
+                String convertedString = toRegexExpression(part.partValue);
+//                String convertedString = part.partValue;
+                sb.append(convertedString);
+            }
+        }.join("")
+        String regex = sb.toString()
+        return regex
+    }
+
+
+    static String toRegexExpression(String string){
+        String regexpStr = toSlash(string)
+                                .replace('(', '\\(').replace(')', '\\)')
+                                .replace('[', '\\[').replace(']', '\\]')
+                                .replace('.', '\\.').replace('$', '\\$')
+                                .replace('*',"[^\\/\\\\]*")
+                                .replace('[^\\/\\\\]*[^\\/\\\\]*/','(\\S*[\\/\\\\]|)')
+                                .replace('[^\\/\\\\]*[^\\/\\\\]*',"\\S*")
+//        return regexpStr.replace("\\", "\\\\")
+        return regexpStr
+    }
+
+    static toSlash(String path){
+        return path?.replaceAll(/[\/\\]+/, '/')
+    }
 
 
 
@@ -513,10 +584,15 @@ class VariableMan {
         return parsedDataList(codeRule, this.variableStringMap)
     }
 
-    List<OnePartObject> parsedDataList(String codeRule, Map<String, String> variableStringMap){
-        logger.trace("..... Analysis code rule")
+    List<OnePartObject> parsedDataList(String codeRule, Map<String, String> variableStringMap) {
         //- Validation
         validateCodeRule(codeRule)
+        //- Parse data
+        return parsedDataList(codeRule, variableStringMap, this.variableClosureMap, this.patternToGetVariable)
+    }
+
+    List<OnePartObject> parsedDataList(String codeRule, Map<String, String> variableStringMap, Map<String, String> variableClosureMap, String patternToGetVariable){
+        logger.trace("..... Analysis code rule")
         //- Get String In ${ } step by step
         Matcher matchedList = Pattern.compile(patternToGetVariable).matcher(codeRule)
         List<String> splitWithCodeRuleList = codeRule?.split(patternToGetVariable)?.toList()
@@ -524,7 +600,6 @@ class VariableMan {
 
         logger.trace("..... Creating Part-Object from parsed datas with code rule: (variable: ${codeList.size()})")
         List<OnePartObject> partObjectList = []
-        Map<String, Closure> variableClosureMap = this.variableClosureMap
         int cnt = -1
         codeList.each{ String code ->
             cnt++
@@ -839,6 +914,10 @@ class VariableMan {
      * @return
      */
     boolean validateCodeRule(String codeRule) throws Exception{
+        return validateCodeRule(codeRule, modeMustExistCodeRule)
+    }
+
+    static boolean validateCodeRule(String codeRule, boolean modeMustExistCodeRule) throws Exception{
         /* DEVELOPER COMMENT: "It does not matter." */
         if (modeMustExistCodeRule && codeRule == null)
             throw new NullPointerException()
