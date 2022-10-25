@@ -411,11 +411,11 @@ class VariableMan {
         return parseObject(codeRule, this.variableStringMap)
     }
 
-    private String parseVirtualRuleContent(String codeRuleContent, Object itItem){
-        OnePartObject partObj = new VariableMan(variableStringMap, variableClosureMap)
-                        .setModeMustExistCodeRule(modeMustExistCodeRule)
-                        .setModeExistCodeOnly(modeExistCodeOnly)
-                        .setModeExistFunctionOnly(modeExistFunctionOnly)
+    private String parseVirtualRuleContent(String codeRuleContent, Object itItem, Map<String, String> vsMap, Map<String, Closure> vcMap){
+        OnePartObject partObj = new VariableMan(vsMap, vcMap)
+                        .setModeMustExistCodeRule(this.modeMustExistCodeRule)
+                        .setModeExistCodeOnly(this.modeExistCodeOnly)
+                        .setModeExistFunctionOnly(this.modeExistFunctionOnly)
                         .setCharset(this.getCharset())
                         .setVariableSign(this.variableSign)
                         .setModeExistCodeOnly(false)
@@ -1469,7 +1469,7 @@ class VariableMan {
                             for (int i=0; i<list.size(); i++){
                                 some = list.get(i);
                                 vsMap.put("it", some);
-                                if (computeAsMemberArrayInIf(part.members, some))
+                                if (computeAsMemberArrayInIf(part.members, some, vsMap, vcMap))
                                     newList.add(some);
                             }
                             vsMap.put("it", itBefore);
@@ -1484,7 +1484,7 @@ class VariableMan {
                             while (iter.hasNext()){
                                 some = iter.next();
                                 vsMap.put("it", some);
-                                if (computeAsMemberArrayInIf(part.members, some))
+                                if (computeAsMemberArrayInIf(part.members, some, vsMap, vcMap))
                                     newMap.put(some);
                             }
                             vsMap.put("it", itBefore);
@@ -1504,14 +1504,14 @@ class VariableMan {
                         if (beforeReducedCollection instanceof List){
                             List<?> afterReducedCollection = new ArrayList<>();
                             for (Object beforeReducedItem : beforeReducedCollection){
-                                String reducedParsedResult = parseVirtualRuleContent(virtualRuleContent, beforeReducedItem)
+                                String reducedParsedResult = parseVirtualRuleContent(virtualRuleContent, beforeReducedItem, vsMap, vcMap)
                                 afterReducedCollection.add( reducedParsedResult )
                             }
                             part.reducedCollection = afterReducedCollection
                         }else if (beforeReducedCollection instanceof Map){
                             Map<?> afterReducedCollection = new HashMap<>();
                             for (Object item : beforeReducedCollection){
-                                String reducedParsedResult = parseVirtualRuleContent(virtualRuleContent, item)
+                                String reducedParsedResult = parseVirtualRuleContent(virtualRuleContent, item, vsMap, vcMap)
                                 afterReducedCollection.put( item, reducedParsedResult )
                             }
                             part.reducedCollection = afterReducedCollection
@@ -1713,10 +1713,10 @@ class VariableMan {
 
     private boolean checkConditionFunction(OnePartObject part, Map<String, String> variableStringMap, Map<String, Closure> variableClosureMap){
         String value = part.substitutes ?: getIgnoreCase(variableStringMap, part.valueCode)
-        return computeAsMemberArrayInIf(part.members, value)
+        return computeAsMemberArrayInIf(part.members, value, variableStringMap, variableClosureMap)
     }
 
-    private boolean computeAsMemberArrayInIf(String[] members, Object alreadyDefinedValue){
+    private boolean computeAsMemberArrayInIf(String[] members, Object alreadyDefinedValue, Map<String, Object> variableStringMap, Map<String, Object> variableClosureMap){
         boolean result = false
         int memberSize = members.size()
         String value, computer, targetValue
@@ -1729,7 +1729,7 @@ class VariableMan {
                 computer = notYetConfirmedOperater
                 result = computeOperator(value, computer, targetValue)
             }else{
-                result = computeAsNaturalOperatingStringInIf(notYetConfirmedOperater, alreadyDefinedValue)
+                result = computeAsNaturalOperatingStringInIf(notYetConfirmedOperater, alreadyDefinedValue, variableStringMap, variableClosureMap)
             }
 
         }else if (memberSize == 2){
@@ -1778,10 +1778,10 @@ class VariableMan {
     }
 
     private boolean computeAsNaturalOperatingStringInIf(String notYetConfirmed){
-        return computeAsNaturalOperatingStringInIf(notYetConfirmed, null)
+        return computeAsNaturalOperatingStringInIf(notYetConfirmed, null, this.variableStringMap, this.variableClosureMap)
     }
 
-    private boolean computeAsNaturalOperatingStringInIf(String notYetConfirmed, Object alreadyDefinedValue){
+    private boolean computeAsNaturalOperatingStringInIf(String notYetConfirmed, Object alreadyDefinedValue, Map<String, Object> variableStringMap, Map<String, Closure> variableClosureMap){
         boolean result = false
         Object value, targetValue
         String computer
