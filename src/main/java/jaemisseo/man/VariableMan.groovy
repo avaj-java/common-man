@@ -230,45 +230,7 @@ class VariableMan {
         return this
     }
 
-    /**
-     * You Can Add Variable
-     *  [ VariableName(String) : VariableValue(String) ]
-     *  Please Do Not Set These Names => 'date', 'random'
-     * @param variableStringMapToAdd
-     * @return
-     */
-    @Deprecated
-    VariableMan addVariables(Map<String, String> variableStringMapToAdd){
-        if (variableStringMapToAdd)
-            this.variableStringMap.putAll(variableStringMapToAdd)
-        return this
-    }
 
-    /**
-     * You Can Add Variable
-     *  [ VariableName(String) : Variable Function(Closure) ]
-     *  Please Refer To getBasicVariableClosureMap()
-     * @param variableFuncMapToAdd
-     * @return
-     */
-    @Deprecated
-    VariableMan addVariableClosures(Map<String, Closure> variableFuncMapToAdd){
-        if (variableFuncMapToAdd)
-            this.variableClosureMap.putAll(variableFuncMapToAdd)
-        return this
-    }
-
-    /**
-     *  You Can Create Custom Function
-     *  [ FunctionName(String) : Function(Closure) ]
-     *  Please Refer To getBasicFuncMap()
-     * @param funcMapToAdd
-     */
-    @Deprecated
-    VariableMan addFuncs(Map<String, Closure> funcMapToAdd){
-        this.funcMap.putAll(funcMapToAdd)
-        return this
-    }
 
     /**
      * You Can Put Variable
@@ -301,7 +263,7 @@ class VariableMan {
         return toPropertiesMap(parameters, '', concatKeyStringValueMap)
     }
 
-    static Map<String, Object> toPropertiesMap(Map parameters, String prevKey, Map<String, String> concatKeyStringValueMap){
+    static Map<String, Object> toPropertiesMap(Map parameters, String prevKey, Map<String, Object> concatKeyStringValueMap){
         parameters.keySet().each{ String key ->
             String concatKey = (prevKey) ? prevKey + '.' + key : key
             def value = parameters[key]
@@ -411,7 +373,7 @@ class VariableMan {
         return parseObject(codeRule, this.variableStringMap)
     }
 
-    private String parseVirtualRuleContent(String codeRuleContent, Object itItem, Map<String, String> vsMap, Map<String, Closure> vcMap){
+    private String parseVirtualRuleContent(String codeRuleContent, Object itItem, Map<String, Object> vsMap, Map<String, Closure> vcMap){
         OnePartObject partObj = new VariableMan(vsMap, vcMap)
                         .setModeMustExistCodeRule(this.modeMustExistCodeRule)
                         .setModeExistCodeOnly(this.modeExistCodeOnly)
@@ -434,7 +396,7 @@ class VariableMan {
      * @return
      * @throws java.lang.Exception
      */
-    Object parse(Object codeRule, Map<String, String> variableStringMap) {
+    Object parse(Object codeRule, Map<String, Object> variableStringMap) {
         switch(codeRule){
             case {codeRule instanceof String}:
                 return parseString(codeRule, variableStringMap)
@@ -445,7 +407,7 @@ class VariableMan {
         }
     }
 
-    String parseString(String codeRule, Map<String, String> variableStringMap) {
+    String parseString(String codeRule, Map<String, Object> variableStringMap) {
         logger.trace("......................... Start parse string: ${codeRule}")
 
         //- Validation
@@ -475,7 +437,7 @@ class VariableMan {
             }
             return partObj.parsedValue
         }
-        logger.trace('......................... FInish parse string')
+        logger.trace('......................... Finish parse string')
         if (modeDebug){
             println ""
             println "//////////////////////////////////////////////////"
@@ -489,7 +451,7 @@ class VariableMan {
         return parsedPartStringList.join('')
     }
 
-    Object parseObject(Object codeRule, Map<String, String> variableStringMap) {
+    Object parseObject(Object codeRule, Map<String, Object> variableStringMap) {
         switch (codeRule){
             case {codeRule instanceof Map}:
                 codeRule.each{ key, item ->
@@ -584,14 +546,14 @@ class VariableMan {
         return parsedDataList(codeRule, this.variableStringMap)
     }
 
-    List<OnePartObject> parsedDataList(String codeRule, Map<String, String> variableStringMap) {
+    List<OnePartObject> parsedDataList(String codeRule, Map<String, Object> variableStringMap) {
         //- Validation
         validateCodeRule(codeRule)
         //- Parse data
         return parsedDataList(codeRule, variableStringMap, this.variableClosureMap, this.patternToGetVariable)
     }
 
-    List<OnePartObject> parsedDataList(String codeRule, Map<String, String> variableStringMap, Map<String, String> variableClosureMap, String patternToGetVariable){
+    List<OnePartObject> parsedDataList(String codeRule, Map<String, Object> variableStringMap, Map<String, Closure> variableClosureMap, String patternToGetVariable){
         logger.trace("..... Analysis code rule")
         //- Get String In ${ } step by step
         Matcher matchedList = Pattern.compile(patternToGetVariable).matcher(codeRule)
@@ -650,7 +612,7 @@ class VariableMan {
         )
     }
 
-    OnePartObject generateOnePartObjectForVariable(String partValue, Map<String, String> variableStringMap, Map<String, Closure> variableClosureMap){
+    OnePartObject generateOnePartObjectForVariable(String partValue, Map<String, Object> variableStringMap, Map<String, Closure> variableClosureMap){
         // 1. get String in ${ }
         String content
         if (variableSign){
@@ -682,7 +644,7 @@ class VariableMan {
         return parsedPartObj
     }
 
-    OnePartObject parseCodeContent(OnePartObject partObj, Map<String, String> variableStringMap, Map<String, Closure> variableClosureMap){
+    OnePartObject parseCodeContent(OnePartObject partObj, Map<String, Object> variableStringMap, Map<String, Closure> variableClosureMap){
         String content = partObj.partContent
         List<String> funcs = content?.split(patternToSeperateFuncs)?.toList()
         int variableEndIndex = funcs.findIndexOf{ it.indexOf('(') != -1 }
@@ -942,7 +904,7 @@ class VariableMan {
     }
 
 
-    void getVariableValue(OnePartObject partObj, Map<String, String> variableStringMap, Map<String, Closure> variableClosureMap){
+    void getVariableValue(OnePartObject partObj, Map<String, Object> variableStringMap, Map<String, Closure> variableClosureMap){
         String funcNm = partObj.funcNm
         String[] members = partObj.members
         //Variable(default) - DATE, RANDOM ...
@@ -987,19 +949,19 @@ class VariableMan {
     }
 
 
-    void runFunc(OnePartObject partObj, Map<String, String> variableStringMap, Map<String, Closure> variableClosureMap){
+    void runFunc(OnePartObject partObj, Map<String, Object> variableStringMap, Map<String, Closure> variableClosureMap){
         Closure closure = getIgnoreCase(this.funcMap, partObj.funcNm)
         if (closure)
             closure(partObj, variableStringMap, variableClosureMap)
     }
 
-    void runConditionFunc(OnePartObject partObj, Map<String, String> variableStringMap, Map<String, Closure> variableClosureMap){
+    void runConditionFunc(OnePartObject partObj, Map<String, Object> variableStringMap, Map<String, Closure> variableClosureMap){
         Closure closure = getIgnoreCase(this.conditionFuncMap, partObj.funcNm)
         if (closure)
             closure(partObj, variableStringMap, variableClosureMap)
     }
 
-    void runStreamFunc(OnePartObject partObj, Map<String, String> variableStringMap, Map<String, Closure> variableClosureMap){
+    void runStreamFunc(OnePartObject partObj, Map<String, Object> variableStringMap, Map<String, Closure> variableClosureMap){
         Closure closure = getIgnoreCase(this.streamFuncMap, partObj.funcNm)
         if (closure)
             closure(partObj, variableStringMap, variableClosureMap)
@@ -1088,7 +1050,7 @@ class VariableMan {
                     it.substitutes = result
                     it.length = length
                 },
-                'ENTER': { OnePartObject it, Map<String, String> vsMap, Map<String, Closure> vcMap ->
+                'ENTER': { OnePartObject it, Map<String, Object> vsMap, Map<String, Closure> vcMap ->
                     String[] members = it.members
                     int count = (members && members[0]) ? Integer.parseInt(members[0]) : 1
                     it.substitutes = (1..count).collect{ '\n' }.join('')
@@ -1404,7 +1366,7 @@ class VariableMan {
                 /*************************
                  * Condition
                  *************************/
-                'IF': { OnePartObject it, Map<String, String> vsMap, Map<String, Closure> vcMap ->
+                'IF': { OnePartObject it, Map<String, Object> vsMap, Map<String, Closure> vcMap ->
                     it.modeIf = true
                     it.okIfSeq = 0
                     it.nowIfSeq = 1
@@ -1412,19 +1374,19 @@ class VariableMan {
                         it.okIfSeq = it.nowIfSeq
                     }
                 },
-                'ELSEIF': { OnePartObject it, Map<String, String> vsMap, Map<String, Closure> vcMap ->
+                'ELSEIF': { OnePartObject it, Map<String, Object> vsMap, Map<String, Closure> vcMap ->
                     ++it.nowIfSeq
                     if (it.modeIf && it.okIfSeq == 0 && checkConditionFunction(it, vsMap, vcMap)){
                         it.okIfSeq = it.nowIfSeq
                     }
                 },
-                'ELSE': { OnePartObject it, Map<String, String> vsMap, Map<String, Closure> vcMap ->
+                'ELSE': { OnePartObject it, Map<String, Object> vsMap, Map<String, Closure> vcMap ->
                     ++it.nowIfSeq
                     if (it.modeIf && it.okIfSeq == 0){
                         it.okIfSeq = it.nowIfSeq
                     }
                 },
-                'ENDIF': { OnePartObject it, Map<String, String> vsMap, Map<String, Closure> vcMap ->
+                'ENDIF': { OnePartObject it, Map<String, Object> vsMap, Map<String, Closure> vcMap ->
                     it.modeIf = false
                     it.okIfSeq = 0
                     it.nowIfSeq = 0
@@ -1437,7 +1399,7 @@ class VariableMan {
                 /*************************
                  * Stream
                  *************************/
-                'STREAM': { OnePartObject part, Map<String, String> vsMap, Map<String, Closure> vcMap ->
+                'STREAM': { OnePartObject part, Map<String, Object> vsMap, Map<String, Closure> vcMap ->
                     part.modeStream = true
                     part.okStreamLevel = 0
                     part.nowStreamLevel = 1
@@ -1459,7 +1421,7 @@ class VariableMan {
                         }
                     }
                 },
-                'FILTER': { OnePartObject part, Map<String, String> vsMap, Map<String, Closure> vcMap ->
+                'FILTER': { OnePartObject part, Map<String, Object> vsMap, Map<String, Closure> vcMap ->
                     if (part.modeStream){
                         if (part.reducedCollection instanceof List){
                             List list = part.reducedCollection
@@ -1493,7 +1455,7 @@ class VariableMan {
 
                     }
                 },
-                'ENDSTREAM': { OnePartObject part, Map<String, String> vsMap, Map<String, Closure> vcMap ->
+                'ENDSTREAM': { OnePartObject part, Map<String, Object> vsMap, Map<String, Closure> vcMap ->
                     part.modeStream = false
                     part.okStreamLevel = 0
                     part.nowStreamLevel = 0
@@ -1711,7 +1673,7 @@ class VariableMan {
     }
 
 
-    private boolean checkConditionFunction(OnePartObject part, Map<String, String> variableStringMap, Map<String, Closure> variableClosureMap){
+    private boolean checkConditionFunction(OnePartObject part, Map<String, Object> variableStringMap, Map<String, Closure> variableClosureMap){
         String value = part.substitutes ?: getIgnoreCase(variableStringMap, part.valueCode)
         return computeAsMemberArrayInIf(part.members, value, variableStringMap, variableClosureMap)
     }
