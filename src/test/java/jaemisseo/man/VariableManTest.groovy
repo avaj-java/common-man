@@ -20,11 +20,15 @@ class VariableManTest {
     File testFile
 
     VariableMan varman
+    Map<String, Object> variableMap
 
     @Before
     void beforeTest(){
         // VariableMan 생성
-        varman = new VariableMan('EUC-KR', [
+        varman = new VariableMan('EUC-KR')
+//        .setModeDebug(true)
+
+        variableMap = [
                 noContent                    : "",
                 nullContent                  : null,
                 USERNAME                     : "하이하이하이",
@@ -68,11 +72,10 @@ class VariableManTest {
                 number3: '3',
                 number4: 4,
                 listTest: [
-                    1,2,3,4,111,2222,1155,'Hehehe'
+                        1,2,3,4,111,2222,1155,'Hehehe'
                 ],
                 listEmptyTest: []
-        ])
-//        .setModeDebug(true)
+        ]
 
         Long time = new Date().getTime()
         String dirPath = "/temp"
@@ -105,62 +108,62 @@ class VariableManTest {
     @Test
     void simpleVariable() {
         // Test empty string
-        assert varman.parse('') == ""
+        assert varman.parse('', variableMap) == ""
 
         // Test - left() and right()
-        assert varman.parse('${USERNAME(8).left()}asfd') == "하이하이asfd"
-        assert varman.parse('${USERNAME()}asfd') == "하이하이하이asfd"
-        assert varman.parse('${USERNAME}asfd') == "하이하이하이asfd"
-        assert varman.parse('${USERNAME(8)}asfd') == "하이하이asfd"
-        assert varman.parse('${USERNAME(8).right()}asfd') == "하이하이asfd"
-        assert varman.parse('${USERNAME(14).right()}asfd') == "하이하이하이  asfd"
+        assert varman.parse('${USERNAME(8).left()}asfd', variableMap) == "하이하이asfd"
+        assert varman.parse('${USERNAME()}asfd', variableMap) == "하이하이하이asfd"
+        assert varman.parse('${USERNAME}asfd', variableMap) == "하이하이하이asfd"
+        assert varman.parse('${USERNAME(8)}asfd', variableMap) == "하이하이asfd"
+        assert varman.parse('${USERNAME(8).right()}asfd', variableMap) == "하이하이asfd"
+        assert varman.parse('${USERNAME(14).right()}asfd', variableMap) == "하이하이하이  asfd"
 
         // Test - lower() and upper()
-        assert varman.parse('${USERNAME(8).lower()}asfd') == "하이하이asfd"
-        assert varman.parse('${lowerChar()}asfd') == "hi everybodyasfd"
-        assert varman.parse('${lowerChar().upper()}asfd') == "HI EVERYBODYasfd"
-        assert varman.parse('${upperChar(15).left(0).lower()}asfd') == "000hi everybodyasfd"
-        assert varman.parse('${upperChar().lower()}asfd') == "hi everybodyasfd"
+        assert varman.parse('${USERNAME(8).lower()}asfd', variableMap) == "하이하이asfd"
+        assert varman.parse('${lowerChar()}asfd', variableMap) == "hi everybodyasfd"
+        assert varman.parse('${lowerChar().upper()}asfd', variableMap) == "HI EVERYBODYasfd"
+        assert varman.parse('${upperChar(15).left(0).lower()}asfd', variableMap) == "000hi everybodyasfd"
+        assert varman.parse('${upperChar().lower()}asfd', variableMap) == "hi everybodyasfd"
 
         // Test - ${}
-        assert varman.parse('${}asdf') == '${}asdf'
-        assert varman.parse('${}asdf${}') == '${}asdf${}'
-        assert varman.parse('${}as ${ } ${  } ${  ddfd } ${ddfd} ${syntaxTest}  d   f${}') == '${}as ${ } ${  }   HI ${}EVERYBODY${}  d   f${}'
-        assert varman.parse('${s()} ${s()}///${thisIsEmpty(50).left( )}///${}') == '하하하\\n하하하 하하하\\n하하하///                                                  ///${}'
-        assert varman.parse('${s2()}///${thisIsEmpty(50).left( )}///${}') == 'ㅋㅋㅋ\nㅋㅋl///                                                  ///${}'
+        assert varman.parse('${}asdf', variableMap) == '${}asdf'
+        assert varman.parse('${}asdf${}', variableMap) == '${}asdf${}'
+        assert varman.parse('${}as ${ } ${  } ${  ddfd } ${ddfd} ${syntaxTest}  d   f${}', variableMap) == '${}as ${ } ${  }   HI ${}EVERYBODY${}  d   f${}'
+        assert varman.parse('${s()} ${s()}///${thisIsEmpty(50).left( )}///${}', variableMap) == '하하하\\n하하하 하하하\\n하하하///                                                  ///${}'
+        assert varman.parse('${s2()}///${thisIsEmpty(50).left( )}///${}', variableMap) == 'ㅋㅋㅋ\nㅋㅋl///                                                  ///${}'
 
         // Test - numberOnly()
-        assert varman.parse('[${num(15)}] / [${num().numberOnly()}] / [${num(15).numberOnly()}] / [${num(15).numberOnly().right()}]') == '[010-9911-0321  ] / [01099110321] / [01099110321    ] / [01099110321    ]'
+        assert varman.parse('[${num(15)}] / [${num().numberOnly()}] / [${num(15).numberOnly()}] / [${num(15).numberOnly().right()}]', variableMap) == '[010-9911-0321  ] / [01099110321] / [01099110321    ] / [01099110321    ]'
 
         // Test - nvl()
-        assert varman.parse('${nvl.test().nvl()} hahaha ${nvl.test().nvl(hohoho)} ${USERNAME().nvl()} ${USERNAME().nvl(hehehe)}') == ' hahaha hohoho 하이하이하이 하이하이하이'
+        assert varman.parse('${nvl.test().nvl()} hahaha ${nvl.test().nvl(hohoho)} ${USERNAME().nvl()} ${USERNAME().nvl(hehehe)}', variableMap) == ' hahaha hohoho 하이하이하이 하이하이하이'
 
         // Test - length
-        assert varman.parse('${installer.level.1.file.path}') == '/foo/bar'
-        assert varman.parse('${installer.level.1.file.path()}') == '/foo/bar'
-        assert varman.parse('${installer.level.1.file.path(3)}') == '/fo'
+        assert varman.parse('${installer.level.1.file.path}', variableMap) == '/foo/bar'
+        assert varman.parse('${installer.level.1.file.path()}', variableMap) == '/foo/bar'
+        assert varman.parse('${installer.level.1.file.path(3)}', variableMap) == '/fo'
 
         // Test - date (내장된 변수)
-        println varman.parse('${}as ${date()} ${}')
-        println varman.parse('${}as ${date(yyyy-MM-dd HH:mm:ssSSS)} ${}')
+        println varman.parse('${}as ${date()} ${}', variableMap)
+        println varman.parse('${}as ${date(yyyy-MM-dd HH:mm:ssSSS)} ${}', variableMap)
         // Test - date (내장된 변수)
-        println varman.parse('${}as ${date(SSS)}${}')
+        println varman.parse('${}as ${date(SSS)}${}', variableMap)
         // Test - date (내장된 변수)
-        println varman.parse('${}as ${date(SS)}${}')
+        println varman.parse('${}as ${date(SS)}${}', variableMap)
         // Test - date (내장된 변수)
-        println varman.parse('${}as ${date(S)}${}')
-        println varman.parse('${}as ${date(long)}${}')
-        println varman.parse('${}as ${date(long)}${}')
-        println varman.parse('[${date(yyyyMMddHHmmssSSS)}${random(5)}]')
+        println varman.parse('${}as ${date(S)}${}', variableMap)
+        println varman.parse('${}as ${date(long)}${}', variableMap)
+        println varman.parse('${}as ${date(long)}${}', variableMap)
+        println varman.parse('[${date(yyyyMMddHHmmssSSS)}${random(5)}]', variableMap)
 
         // Test - parseDefaultVariableOnly
         String tempCode = '${USERNAME} ${notExistsVariable} [${date(yyyyMMddHHmmssSSS)}${random(5)}]'
-        println varman.setModeExistCodeOnly(true).parse(tempCode)
+        println varman.setModeExistCodeOnly(true).parse(tempCode, variableMap)
 
-        assert varman.setModeExistCodeOnly(true).parse(tempCode).startsWith('하이하이하이 ${notExistsVariable} [')
-        println varman.setModeExistCodeOnly(false).parse(tempCode)
+        assert varman.setModeExistCodeOnly(true).parse(tempCode, variableMap).startsWith('하이하이하이 ${notExistsVariable} [')
+        println varman.setModeExistCodeOnly(false).parse(tempCode, variableMap)
 
-        assert varman.setModeExistCodeOnly(false).parse(tempCode).startsWith('하이하이하이  [')
+        assert varman.setModeExistCodeOnly(false).parse(tempCode, variableMap).startsWith('하이하이하이  [')
         println varman.setModeExistCodeOnly(true).parseDefaultVariableOnly(tempCode)
         assert varman.setModeExistCodeOnly(true).parseDefaultVariableOnly(tempCode).startsWith('${USERNAME} ${notExistsVariable} [')
 
@@ -172,61 +175,61 @@ class VariableManTest {
 
     @Test
     void userSetLength(){
-        assert varman.parse('${like()}') == 'I LIKE BANANA.'
-        assert varman.parse('${like}') == 'I LIKE BANANA.'
-        assert varman.parse('${like(1)}') == 'I'
-        assert varman.parse('${like(2)}') == 'I '
-        assert varman.parse('${like(16)}') == 'I LIKE BANANA.  '
-        assert varman.parse('${like(16).right(0)}') == 'I LIKE BANANA.00'
-        assert varman.parse('${like(16).left(0)}') == '00I LIKE BANANA.'
+        assert varman.parse('${like()}', variableMap) == 'I LIKE BANANA.'
+        assert varman.parse('${like}', variableMap) == 'I LIKE BANANA.'
+        assert varman.parse('${like(1)}', variableMap) == 'I'
+        assert varman.parse('${like(2)}', variableMap) == 'I '
+        assert varman.parse('${like(16)}', variableMap) == 'I LIKE BANANA.  '
+        assert varman.parse('${like(16).right(0)}', variableMap) == 'I LIKE BANANA.00'
+        assert varman.parse('${like(16).left(0)}', variableMap) == '00I LIKE BANANA.'
         //- UserSetLength with variable
-        assert varman.parse('${number1}') == '1'
-        assert varman.parse('${number2}') == '2'
-        assert varman.parse('${number3}') == '3'
-        assert varman.parse('${like(number1)}') == 'I'
-        assert varman.parse('${like(number4)}') == 'I LI'
-        assert varman.parse('${like(number2)} / ${like(number3)}') == 'I  / I L'
+        assert varman.parse('${number1}', variableMap) == '1'
+        assert varman.parse('${number2}', variableMap) == '2'
+        assert varman.parse('${number3}', variableMap) == '3'
+        assert varman.parse('${like(number1)}', variableMap) == 'I'
+        assert varman.parse('${like(number4)}', variableMap) == 'I LI'
+        assert varman.parse('${like(number2)} / ${like(number3)}', variableMap) == 'I  / I L'
         //
-        assert varman.parse('${not.exist.value(5).left(0)}')  == '00000'
-        assert varman.parse('${nothing(5).left(0)}')  == '00000'
-        assert varman.parse('${not.exist.value(0).left(0)}')  == ''
-        assert varman.parse('${nothing(0).left(0)}')  == ''
+        assert varman.parse('${not.exist.value(5).left(0)}', variableMap)  == '00000'
+        assert varman.parse('${nothing(5).left(0)}', variableMap)  == '00000'
+        assert varman.parse('${not.exist.value(0).left(0)}', variableMap)  == ''
+        assert varman.parse('${nothing(0).left(0)}', variableMap)  == ''
     }
 
     @Test
     void syntexTest(){
-        println varman.parse('${random(3)}')
-        println varman.parse('${random()}')
-        println varman.parse('${random}')
-        println varman.parse('${date()}')
-        println varman.parse('${date}')
-        println varman.parse('${enter()}1${enter(2)}2${enter(3)}3')
-        println varman.parse('${enter}1${enter}2${enter}3')
+        println varman.parse('${random(3)}', variableMap)
+        println varman.parse('${random()}', variableMap)
+        println varman.parse('${random}', variableMap)
+        println varman.parse('${date()}', variableMap)
+        println varman.parse('${date}', variableMap)
+        println varman.parse('${enter()}1${enter(2)}2${enter(3)}3', variableMap)
+        println varman.parse('${enter}1${enter}2${enter}3', variableMap)
 
-        println varman.parse('${my.date().dateformat(yyyy MM dd )}')
-        println varman.parse('${my.date().dateformat(yyyy MM dd, yy/MM/dd/HH/mm/ss)}')
-        println varman.parse('${my.date2().dateformat(yyyy/MM/dd)}')
-        println varman.parse('${my.date2().dateformat(yyyy/MM/dd HH:mm:ss)}')
-        println varman.parse('${my.date2().dateformat(yyyy/MM/dd HH:mm:ss, yy/MM/dd/HH/mm/ss)}')
-        println varman.parse('${my.date2().dateformat("yyyy/MM/dd HH:mm:ss", "yy/MM/dd/HH/mm/ss")}')
+        println varman.parse('${my.date().dateformat(yyyy MM dd )}', variableMap)
+        println varman.parse('${my.date().dateformat(yyyy MM dd, yy/MM/dd/HH/mm/ss)}', variableMap)
+        println varman.parse('${my.date2().dateformat(yyyy/MM/dd)}', variableMap)
+        println varman.parse('${my.date2().dateformat(yyyy/MM/dd HH:mm:ss)}', variableMap)
+        println varman.parse('${my.date2().dateformat(yyyy/MM/dd HH:mm:ss, yy/MM/dd/HH/mm/ss)}', variableMap)
+        println varman.parse('${my.date2().dateformat("yyyy/MM/dd HH:mm:ss", "yy/MM/dd/HH/mm/ss")}', variableMap)
 
-        assert varman.parse('${random(3)}').length() == 3
+        assert varman.parse('${random(3)}', variableMap).length() == 3
     }
 
     @Test
     void systemVariableTest() {
         // Test - left() and right()
-        println '_USER.NAME: ' + varman.parse('${_user.name}')
-        println '_USER.DIR: ' + varman.parse('${_user.dir}')
-        println '_USER.HOME: ' + varman.parse('${_user.home}')
-        println '_OS.NAME: ' + varman.parse('${_os.name}')
-        println '_OS.VERSION: ' + varman.parse('${_os.version}')
-        println '_JAVA.VERSION: ' + varman.parse('${_java.version}')
-        println '_JAVA.HOME: ' + varman.parse('${_java.home}')
-        println '_HOSTNAME: ' + varman.parse('${_hostname}')
-        println '_IP: ' + varman.parse('${_ip}')
-        println '_LIB.DIR: ' + varman.parse('${_lib.dir}')
-        println '_LIB.PATH: ' + varman.parse('${_lib.path}')
+        println '_USER.NAME: ' + varman.parse('${_user.name}', variableMap)
+        println '_USER.DIR: ' + varman.parse('${_user.dir}', variableMap)
+        println '_USER.HOME: ' + varman.parse('${_user.home}', variableMap)
+        println '_OS.NAME: ' + varman.parse('${_os.name}', variableMap)
+        println '_OS.VERSION: ' + varman.parse('${_os.version}', variableMap)
+        println '_JAVA.VERSION: ' + varman.parse('${_java.version}', variableMap)
+        println '_JAVA.HOME: ' + varman.parse('${_java.home}', variableMap)
+        println '_HOSTNAME: ' + varman.parse('${_hostname}', variableMap)
+        println '_IP: ' + varman.parse('${_ip}', variableMap)
+        println '_LIB.DIR: ' + varman.parse('${_lib.dir}', variableMap)
+        println '_LIB.PATH: ' + varman.parse('${_lib.path}', variableMap)
     }
 
     @Test
@@ -244,50 +247,50 @@ class VariableManTest {
     @Test
     void addTypeFunction(){
         // Test - replace
-        assert varman.parse('${installer.level.1.file.path().add(VariableMan)}') == '/foo/barVariableMan'
-        assert varman.parse('${installer.level.1.file.path().add(I\'m VariableMan)}') == '/foo/barI\'m VariableMan'
-        assert varman.parse('${installer.level.1.file.path().addBefore(I\'m VariableMan)}') == 'I\'m VariableMan/foo/bar'
-        assert varman.parse('${installer.level.1.file.path().add( enter )}') == '/foo/bar\n'
-        assert varman.parse('${installer.level.1.file.path().add( . )}') == '/foo/bar.'
-        assert varman.parse('${installer.level.1.file.path().add( . )}') == '/foo/bar.'
+        assert varman.parse('${installer.level.1.file.path().add(VariableMan)}', variableMap) == '/foo/barVariableMan'
+        assert varman.parse('${installer.level.1.file.path().add(I\'m VariableMan)}', variableMap) == '/foo/barI\'m VariableMan'
+        assert varman.parse('${installer.level.1.file.path().addBefore(I\'m VariableMan)}', variableMap) == 'I\'m VariableMan/foo/bar'
+        assert varman.parse('${installer.level.1.file.path().add( enter )}', variableMap) == '/foo/bar\n'
+        assert varman.parse('${installer.level.1.file.path().add( . )}', variableMap) == '/foo/bar.'
+        assert varman.parse('${installer.level.1.file.path().add( . )}', variableMap) == '/foo/bar.'
 
-        assert varman.parse('${installer.level.1.file.path().add( "," )}') == '/foo/bar,'
-        assert varman.parse('${installer.level.1.file.path().add(",")}') == '/foo/bar,'
-        assert varman.parse('${installer.level.1.file.path().add(" GRANT SELECT, INSERT, UPDATE, DELETE ON ").add(tableName).add(" TO RR_").add(tableName).add(_WW)}') == '/foo/bar GRANT SELECT, INSERT, UPDATE, DELETE ON TBHOHO0012 TO RR_TBHOHO0012_WW'
+        assert varman.parse('${installer.level.1.file.path().add( "," )}', variableMap) == '/foo/bar,'
+        assert varman.parse('${installer.level.1.file.path().add(",")}', variableMap) == '/foo/bar,'
+        assert varman.parse('${installer.level.1.file.path().add(" GRANT SELECT, INSERT, UPDATE, DELETE ON ").add(tableName).add(" TO RR_").add(tableName).add(_WW)}', variableMap) == '/foo/bar GRANT SELECT, INSERT, UPDATE, DELETE ON TBHOHO0012 TO RR_TBHOHO0012_WW'
     }
 
     @Test
     void existFunction(){
         // Test - replace
-        assert varman.parse('Hello ${nothing().exist().add(VariableMan)}') == 'Hello '
-        assert varman.parse('Hello ${nothing().exist().add(VariableMan)}') == 'Hello '
-        assert varman.parse('Hello ${nothing().exist().addBefore(VariableMan)}') == 'Hello '
+        assert varman.parse('Hello ${nothing().exist().add(VariableMan)}', variableMap) == 'Hello '
+        assert varman.parse('Hello ${nothing().exist().add(VariableMan)}', variableMap) == 'Hello '
+        assert varman.parse('Hello ${nothing().exist().addBefore(VariableMan)}', variableMap) == 'Hello '
 
-        assert varman.parse('Hello ${nothing().add(VariableMan)}') == 'Hello VariableMan'
-        assert varman.parse('Hello ${nothing().add(Variable . Man)}') == 'Hello Variable . Man'
-        assert varman.parse('Hello ${nothing().addBefore( . Variable . Man . )}') == 'Hello . Variable . Man .'
-        assert varman.parse('Hello ${nothing().addBefore(" . Variable . Man . ")}') == 'Hello  . Variable . Man . '
+        assert varman.parse('Hello ${nothing().add(VariableMan)}', variableMap) == 'Hello VariableMan'
+        assert varman.parse('Hello ${nothing().add(Variable . Man)}', variableMap) == 'Hello Variable . Man'
+        assert varman.parse('Hello ${nothing().addBefore( . Variable . Man . )}', variableMap) == 'Hello . Variable . Man .'
+        assert varman.parse('Hello ${nothing().addBefore(" . Variable . Man . ")}', variableMap) == 'Hello  . Variable . Man . '
 
-        assert varman.parse('Hello ${hello().add(" VariableMan ")}') == 'Hello hello VariableMan '
-        assert varman.parse('Hello ${hello().add(" VariableMan ")}') == 'Hello hello VariableMan '
-        assert varman.parse('Hello ${hello().addBefore(" VariableMan ")}') == 'Hello  VariableMan hello'
+        assert varman.parse('Hello ${hello().add(" VariableMan ")}', variableMap) == 'Hello hello VariableMan '
+        assert varman.parse('Hello ${hello().add(" VariableMan ")}', variableMap) == 'Hello hello VariableMan '
+        assert varman.parse('Hello ${hello().addBefore(" VariableMan ")}', variableMap) == 'Hello  VariableMan hello'
     }
 
     @Test
     void replaceFunction(){
         // Test - replace
-        assert varman.parse('${installer.level.1.file.path(3).replace(f,o)}') == '/oo'
-        assert varman.parse('${installer.level.1.file.path(3).replace(/,o)}') == 'ofo'
-        assert varman.parse('${installer.level.1.file.path(3).replace(/,o).replace(f,o)}') == 'ooo'
+        assert varman.parse('${installer.level.1.file.path(3).replace(f,o)}', variableMap) == '/oo'
+        assert varman.parse('${installer.level.1.file.path(3).replace(/,o)}', variableMap) == 'ofo'
+        assert varman.parse('${installer.level.1.file.path(3).replace(/,o).replace(f,o)}', variableMap) == 'ooo'
 
         // Test - replace
-        assert varman.parse('${tab().replace("\t","")}') == 'hellotab1tab3tab4'
-        assert varman.parse('${tab().replace("\t"," ")}') == 'hello tab1   tab3    tab4'
+        assert varman.parse('${tab().replace("\t","")}', variableMap) == 'hellotab1tab3tab4'
+        assert varman.parse('${tab().replace("\t"," ")}', variableMap) == 'hello tab1   tab3    tab4'
 
         // Test - replace_regex
-        assert varman.parse('${installer.level.1.file.path().replaceAll(/,o)}') == 'ofooobar'
-        assert varman.parse('${installer.level.1.file.path().replaceAll(^/,"s")}') == 'sfoo/bar'
-//        assert varman.parse('${installer.level.1.file.path().replace_regex([/]$,s)}') == '/foosbar'
+        assert varman.parse('${installer.level.1.file.path().replaceAll(/,o)}', variableMap) == 'ofooobar'
+        assert varman.parse('${installer.level.1.file.path().replaceAll(^/,"s")}', variableMap) == 'sfoo/bar'
+//        assert varman.parse('${installer.level.1.file.path().replace_regex([/]$,s)}', variableMap) == '/foosbar'
     }
 
     @Test
@@ -304,26 +307,26 @@ class VariableManTest {
             return
 
         //- exists
-        assert "application-site-op.yml" == varman.parse('application-site-${prop(' +testFile.getPath()+ ', "system")}.yml')
-        assert "application-site-op.yml" == varman.parse('application-site-${prop(' +testFile.getPath()+ ', "system")}.yml')
+        assert "application-site-op.yml" == varman.parse('application-site-${prop(' +testFile.getPath()+ ', "system")}.yml', variableMap)
+        assert "application-site-op.yml" == varman.parse('application-site-${prop(' +testFile.getPath()+ ', "system")}.yml', variableMap)
 
         //- not exists
-        assert "application-site-.yml" == varman.parse('application-site-${prop(' +testFile.getPath()+ '.temp, "system")}.yml')
-        assert "application-site-.yml" == varman.parse('application-site-${prop(' +testFile.getPath()+ '.temp, "system")}.yml')
+        assert "application-site-.yml" == varman.parse('application-site-${prop(' +testFile.getPath()+ '.temp, "system")}.yml', variableMap)
+        assert "application-site-.yml" == varman.parse('application-site-${prop(' +testFile.getPath()+ '.temp, "system")}.yml', variableMap)
     }
 
 
     @Test
     void "Properties 스타일 Variable로 변환"(){
         // Exist Variable
-        assert "Hello, i am foo.bar" == varman.parse('Hello, ${foo.bar}')
-        assert "Hello, i am foo.var" == varman.parse('Hello, ${foo.var}')
-        assert "Hello, i am foofoo.bar" == varman.parse('Hello, ${foofoo.bar}')
-        assert "Hello, i am foofoo.barbar.var" == varman.parse('Hello, ${foofoo.barbar.var}')
-        assert "Hello, i am foofoo.barbar.varvar.end" == varman.parse('Hello, ${foofoo.barbar.varvar.end}')
+        assert "Hello, i am foo.bar" == varman.parse('Hello, ${foo.bar}', variableMap)
+        assert "Hello, i am foo.var" == varman.parse('Hello, ${foo.var}', variableMap)
+        assert "Hello, i am foofoo.bar" == varman.parse('Hello, ${foofoo.bar}', variableMap)
+        assert "Hello, i am foofoo.barbar.var" == varman.parse('Hello, ${foofoo.barbar.var}', variableMap)
+        assert "Hello, i am foofoo.barbar.varvar.end" == varman.parse('Hello, ${foofoo.barbar.varvar.end}', variableMap)
 
         // No Exist Variable
-        assert "Hello, " == varman.parse('Hello, ${foo.no.bar}')
+        assert "Hello, " == varman.parse('Hello, ${foo.no.bar}', variableMap)
     }
 
     @Test
@@ -343,7 +346,7 @@ class VariableManTest {
         ]
 
         // Exist Variable
-        def parsedObject = varman.parse(machingParameter)
+        def parsedObject = varman.parse(machingParameter, variableMap)
         assert parsedObject.managerList.size() == parsedObject.managerList.findAll{ it.name.equals '*HELLO SEARCH !!!*' }.size()
         assert parsedObject.managerList.size() == parsedObject.managerList.findAll{ it.id.equals '*HELLO SEARCH !!!*' }.size()
     }
@@ -378,7 +381,8 @@ class VariableManTest {
         List<VariableMan.OnePartObject> list
 
         //VariableMan 생성
-        VariableMan varman = new VariableMan('EUC-KR', [
+        VariableMan varman = new VariableMan('EUC-KR')
+        Map<String, Object> variableMap = [
                 noContent                    : "",
                 nullContent                  : null,
                 USERNAME                     : "하이하이하이",
@@ -390,29 +394,29 @@ class VariableManTest {
                 num                          : '010-9911-0321',
                 'installer.level.1.file.path': '/foo/bar',
                 'nvl.test'                   : '',
-        ])
+        ]
 
         varman.setModeExistFunctionOnly(false)
 
         // Test empty string
-        varman.parsedDataList('') == ""
+        varman.parsedDataList('', variableMap) == ""
 
         // Test - left() and right()
-        list = varman.parsedDataList('${USERNAME(8).left(jjjj)}asfd')
-        list = varman.parsedDataList('${USERNAME()}asfd')
-        list = varman.parsedDataList('${USERNAME}asfd')
-        list = varman.parsedDataList('${USERNAME(8)}asfd')
-        list = varman.parsedDataList('${USERNAME(8).right()}asfd')
-        list = varman.parsedDataList('${USERNAME(14).right()}asfd')
+        list = varman.parsedDataList('${USERNAME(8).left(jjjj)}asfd', variableMap)
+        list = varman.parsedDataList('${USERNAME()}asfd', variableMap)
+        list = varman.parsedDataList('${USERNAME}asfd', variableMap)
+        list = varman.parsedDataList('${USERNAME(8)}asfd', variableMap)
+        list = varman.parsedDataList('${USERNAME(8).right()}asfd', variableMap)
+        list = varman.parsedDataList('${USERNAME(14).right()}asfd', variableMap)
 
-        list = varman.parsedDataList('${USERNAME(14).nvl()}asfd')
+        list = varman.parsedDataList('${USERNAME(14).nvl()}asfd', variableMap)
         assert list[0].hasFunc('nvl')
         assert list[0].getMember('nvl') == [""] as String[]
         assert list[0].getMember('nvl', 0) == ""
         assert list[0].getMember('nonefunc') == null
         assert list[0].getMember('nonefunc', 0) == null
 
-        list = varman.parsedDataList('${USERNAME(14).nonefunc(dddd)}asfd')
+        list = varman.parsedDataList('${USERNAME(14).nonefunc(dddd)}asfd', variableMap)
         assert list[0].hasFunc('nonefunc')
         assert list[0].getMember('nonefunc') == ['dddd'] as String[]
         assert list[0].getMember('nonefunc', 0) == 'dddd'
@@ -420,26 +424,27 @@ class VariableManTest {
 
     @Test
     void signChange(){
-        VariableMan varman = new VariableMan([
+        VariableMan varman = new VariableMan()
+        Map<String, Object> variableMap = [
                 'a1': 'a',
                 'a2': 'aa',
                 'a3': 'aaa',
-        ])
+        ]
         varman.setVariableSign('#')
-        assert varman.parse('${a1} ${a2} ${a3}') == '${a1} ${a2} ${a3}'
-        assert varman.parse('#{a1} #{a2} #{a3}') == 'a aa aaa'
-        assert varman.parse('#{a1} ${a2} #{a3}') == 'a ${a2} aaa'
+        assert varman.parse('${a1} ${a2} ${a3}', variableMap) == '${a1} ${a2} ${a3}'
+        assert varman.parse('#{a1} #{a2} #{a3}', variableMap) == 'a aa aaa'
+        assert varman.parse('#{a1} ${a2} #{a3}', variableMap) == 'a ${a2} aaa'
 
         varman.setVariableSign('%')
-        assert varman.parse('${a1} ${a2} ${a3}') == '${a1} ${a2} ${a3}'
-        assert varman.parse('%{a1} %{a2} %{a3}') == 'a aa aaa'
-        assert varman.parse('%{a1} ${a2} %{a3}') == 'a ${a2} aaa'
+        assert varman.parse('${a1} ${a2} ${a3}', variableMap) == '${a1} ${a2} ${a3}'
+        assert varman.parse('%{a1} %{a2} %{a3}', variableMap) == 'a aa aaa'
+        assert varman.parse('%{a1} ${a2} %{a3}', variableMap) == 'a ${a2} aaa'
 
         varman.setVariableSign('')
-        assert varman.parse('${a1} ${a2} ${a3}') == '$a $aa $aaa'
-        assert varman.parse('#{a1} #{a2} #{a3}') == '#a #aa #aaa'
-        assert varman.parse('#{a1} ${a2} #{a3}') == '#a $aa #aaa'
-        assert varman.parse('{a1} {a2} {a3}') == 'a aa aaa'
+        assert varman.parse('${a1} ${a2} ${a3}', variableMap) == '$a $aa $aaa'
+        assert varman.parse('#{a1} #{a2} #{a3}', variableMap) == '#a #aa #aaa'
+        assert varman.parse('#{a1} ${a2} #{a3}', variableMap) == '#a $aa #aaa'
+        assert varman.parse('{a1} {a2} {a3}', variableMap) == 'a aa aaa'
     }
 
 
@@ -489,8 +494,8 @@ class VariableManTest {
                 c:'월화수목금'
         ]
         VariableMan variableMan = new VariableMan().setCharset('utf-8').putVariables(variables).putFuncs(funcClosures)
-        println variableMan.parseString('${b().split-join(/)}')
-        println variableMan.parseString('${c().split-join(/)}')
+        println variableMan.parseString('${b().split-join(/)}', variableMap)
+        println variableMan.parseString('${c().split-join(/)}', variableMap)
 
     }
 
@@ -521,12 +526,12 @@ class VariableManTest {
         ])
 
         //- exists
-        assert "application-site-op.yml" == variableMan.parse('application-site-${prop(' +testFile.getPath()+ ', "system")}.yml')
-        assert "application-site-op.yml" == variableMan.parse('application-site-${prop(' +testFile.getPath()+ ', "system")}.yml')
+        assert "application-site-op.yml" == variableMan.parse('application-site-${prop(' +testFile.getPath()+ ', "system")}.yml', variableMap)
+        assert "application-site-op.yml" == variableMan.parse('application-site-${prop(' +testFile.getPath()+ ', "system")}.yml', variableMap)
 
         //- not exists
-        assert "application-site-.yml" == variableMan.parse('application-site-${prop(' +testFile.getPath()+ '.temp, "system")}.yml')
-        assert "application-site-.yml" == variableMan.parse('application-site-${prop(' +testFile.getPath()+ '.temp, "system")}.yml')
+        assert "application-site-.yml" == variableMan.parse('application-site-${prop(' +testFile.getPath()+ '.temp, "system")}.yml', variableMap)
+        assert "application-site-.yml" == variableMan.parse('application-site-${prop(' +testFile.getPath()+ '.temp, "system")}.yml', variableMap)
     }
 
 

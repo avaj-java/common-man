@@ -241,12 +241,10 @@ class VariableMan {
      */
     VariableMan putVariables(Map<String, Object> variableStringMapToPut){
         if (variableStringMapToPut){
-            if (variableStringMapToPut.values().any{ it instanceof Map || it instanceof List }){
-                logger.trace('Add Variable (from MultiDepth Map)')
-                variableStringMapToPut = toPropertiesMap(variableStringMapToPut)
-            }else{
-                logger.trace('Add Variable (from SingleDepth Map)')
-            }
+
+            //- Apply to Variable-Map
+            variableStringMapToPut = convertToPropertiesMap(variableStringMapToPut)
+
             if (logger.isTraceEnabled()){
                 variableStringMapToPut.each{
                     logger.trace("[${it.key}] ${it.value}")
@@ -256,6 +254,17 @@ class VariableMan {
             this.variableStringMap.putAll(variableStringMapToPut)
         }
         return this
+    }
+
+    static Map<String, Object> convertToPropertiesMap(Map<String, Object> variableStringMap){
+        boolean subObjectExists = variableStringMap.values().any{ it instanceof Map || it instanceof List }
+        if (subObjectExists){
+            logger.trace('Add Variable (from MultiDepth Map)')
+            variableStringMap = toPropertiesMap(variableStringMap)
+        }else{
+            logger.trace('Add Variable (from SingleDepth Map)')
+        }
+        return variableStringMap
     }
 
     static Map<String, Object> toPropertiesMap(Map parameters){
@@ -375,14 +384,14 @@ class VariableMan {
 
     private String parseVirtualRuleContent(String codeRuleContent, Object itItem, Map<String, Object> vsMap, Map<String, Closure> vcMap){
         OnePartObject partObj = new VariableMan(vsMap, vcMap)
-                        .setModeMustExistCodeRule(this.modeMustExistCodeRule)
-                        .setModeExistCodeOnly(this.modeExistCodeOnly)
-                        .setModeExistFunctionOnly(this.modeExistFunctionOnly)
-                        .setCharset(this.getCharset())
-                        .setVariableSign(this.variableSign)
-                        .setModeExistCodeOnly(false)
-                        .putVariables([it:itItem])
-                        .parseCodeContent(codeRuleContent)
+                .setModeMustExistCodeRule(this.modeMustExistCodeRule)
+                .setModeExistCodeOnly(this.modeExistCodeOnly)
+                .setModeExistFunctionOnly(this.modeExistFunctionOnly)
+                .setCharset(this.getCharset())
+                .setVariableSign(this.variableSign)
+                .setModeExistCodeOnly(false)
+                .putVariables([it:itItem])
+                .parseCodeContent(codeRuleContent)
         makePartResult(partObj)
         return partObj.parsedValue
     }
@@ -409,6 +418,9 @@ class VariableMan {
 
     String parseString(String codeRule, Map<String, Object> variableStringMap) {
         logger.trace("......................... Start parse string: ${codeRule}")
+
+        //- Apply to Variable-Map
+        variableStringMap = convertToPropertiesMap(variableStringMap)
 
         //- Validation
         validateCodeRule(codeRule)
@@ -526,12 +538,12 @@ class VariableMan {
 
     static String toRegexExpression(String string){
         String regexpStr = toSlash(string)
-                                .replace('(', '\\(').replace(')', '\\)')
-                                .replace('[', '\\[').replace(']', '\\]')
-                                .replace('.', '\\.').replace('$', '\\$')
-                                .replace('*',"[^\\/\\\\]*")
-                                .replace('[^\\/\\\\]*[^\\/\\\\]*/','(\\S*[\\/\\\\]|)')
-                                .replace('[^\\/\\\\]*[^\\/\\\\]*',"\\S*")
+                .replace('(', '\\(').replace(')', '\\)')
+                .replace('[', '\\[').replace(']', '\\]')
+                .replace('.', '\\.').replace('$', '\\$')
+                .replace('*',"[^\\/\\\\]*")
+                .replace('[^\\/\\\\]*[^\\/\\\\]*/','(\\S*[\\/\\\\]|)')
+                .replace('[^\\/\\\\]*[^\\/\\\\]*',"\\S*")
 //        return regexpStr.replace("\\", "\\\\")
         return regexpStr
     }
@@ -686,7 +698,7 @@ class VariableMan {
                         }
                     }
 
-                //- Check StreamFunc
+                    //- Check StreamFunc
                 }else if ( getIgnoreCase(streamFuncMap, funcNm) ) {
                     try{
                         runStreamFunc(partObj, variableStringMap, variableClosureMap)
@@ -694,13 +706,13 @@ class VariableMan {
                         throw e
                     }
 
-                // 1) Get Variable's Value
+                    // 1) Get Variable's Value
                 }else if (procIdx == 0){
                     partObj.originalCode = originalCode
                     partObj.valueCode = funcNm
                     getVariableValue(partObj, variableStringMap, variableClosureMap)
 
-                // 2) Run Fucntions To Adjust Value
+                    // 2) Run Fucntions To Adjust Value
                 }else if (procIdx > 0){
                     if (!modeExistFunctionOnly || getIgnoreCase(funcMap, funcNm)){
                         try{
@@ -798,10 +810,10 @@ class VariableMan {
         try{
             if (member){
                 if (member.length() > 1
-                && (
-                    (member.startsWith(charDoubleQuote) && member.endsWith(charDoubleQuote))
-                    ||
-                    (member.startsWith(charSingleQuote) && member.endsWith(charSingleQuote))
+                        && (
+                        (member.startsWith(charDoubleQuote) && member.endsWith(charDoubleQuote))
+                                ||
+                                (member.startsWith(charSingleQuote) && member.endsWith(charSingleQuote))
                 )
                 ){
                     member = member.substring(1, member.length() -1)
@@ -834,10 +846,10 @@ class VariableMan {
         try{
             if (member){
                 if (member.length() > 1
-                && (
-                    (member.startsWith(charDoubleQuote) && member.endsWith(charDoubleQuote))
-                    ||
-                    (member.startsWith(charSingleQuote) && member.endsWith(charSingleQuote))
+                        && (
+                        (member.startsWith(charDoubleQuote) && member.endsWith(charDoubleQuote))
+                                ||
+                                (member.startsWith(charSingleQuote) && member.endsWith(charSingleQuote))
                 )
                 ){
                     memberValue = member.substring(1, member.length() - 1)
@@ -940,7 +952,7 @@ class VariableMan {
             }else{
                 throw new Exception(VAR3, new Throwable("[${partObj.partValue}]") )
             }
-        //Variable(?) - (Not Matched)
+            //Variable(?) - (Not Matched)
         }else{
             partObj.isExistCode = false
             partObj.substitutes = ''
