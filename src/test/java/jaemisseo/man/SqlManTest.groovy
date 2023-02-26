@@ -27,14 +27,19 @@ class SqlManTest {
     @Ignore
     void simpleTest(){
         SqlMan sqlman = new SqlMan()
-        String filePath = ''
+        File file = new File("")
         SqlSetup sqlSetup = new SqlSetup(
-                ip:'localhost', port:'1521', vendor:'oracle', db:'orcl', user:'META_SANGBEOM', password:'META_SANGBEOM',
+                ip: 'localhost',
+                port: '1521',
+                vendor: 'oracle',
+                db: 'orcl',
+                user: 'META_SANGBEOM',
+                password: 'META_SANGBEOM',
                 replaceUser: 'META_INSTALLER_TEST'
         )
 
         sqlman.init()
-                .queryFromFile(filePath)
+                .query(file)
                 .command([SqlMan.ALL])
                 .replace(sqlSetup)
                 .checkBefore(sqlSetup)

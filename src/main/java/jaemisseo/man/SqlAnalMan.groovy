@@ -24,6 +24,7 @@ class SqlAnalMan {
         String sqlFileName
         Integer seq
         String query
+        String executor
         boolean isExistOnDB
         Boolean isOk
         String warnningMessage
@@ -38,7 +39,8 @@ class SqlAnalMan {
         int objectNameIdx
         int objectTypeIdx
 
-        String schemeName
+        String schemaName
+        String schemaNameForObject
         String ownerName
         String password
         String datafileName
@@ -57,6 +59,8 @@ class SqlAnalMan {
         int tablespaceNameIdx
         int tempTablespaceNameIdx
         List<Integer> quotaNameIdxs = []
+        int databaseNameIdx
+        int schemaNameIdx
         int userNameIdx
         int ownerNameIdx
         List<Integer> tableNameIdxs = []
@@ -82,6 +86,10 @@ class SqlAnalMan {
 
 
     // Analysis Sql Query
+    SqlObject getAnalyzedObject(String query){
+        getAnalyzedObject(query, new SqlSetup())
+    }
+
     SqlObject getAnalyzedObject(String query, SqlSetup opt){
         SqlObject sqlObj = new SqlObject()
 //        String queryToCompare = query.replace(")", " ) ").replace("(", " ( ").replaceAll("[,]", " , ").replaceAll("[;]", " ;").replaceAll(/\s{2,}/, " ")
@@ -106,34 +114,34 @@ class SqlAnalMan {
         }
 
         switch (sqlObj.commandType){
-            case 'CREATE':
+            case "CREATE":
                 sqlObj = analCreate(sqlObj, opt)
                 break
-            case 'ALTER':
+            case "ALTER":
                 sqlObj = analAlter(sqlObj, opt)
                 break
-            case 'INSERT':
+            case "INSERT":
                 sqlObj = analInsert(sqlObj, opt)
                 break
-            case 'UPDATE':
+            case "UPDATE":
                 sqlObj = analUpdate(sqlObj, opt)
                 break
-            case 'COMMENT':
+            case "COMMENT":
                 sqlObj = analComment(sqlObj, opt)
                 break
-            case 'GRANT':
+            case "GRANT":
                 sqlObj = analGrant(sqlObj, opt)
                 break
-            case 'PLSQL':
+            case "PLSQL":
                 sqlObj = analPlsql(sqlObj, opt)
                 break
-            case 'SELECT':
+            case "SELECT":
                 sqlObj = analSelect(sqlObj, opt)
                 break
-            case 'DELETE':
+            case "DELETE":
                 sqlObj = analDelete(sqlObj, opt)
                 break
-            case 'DROP':
+            case "DROP":
                 sqlObj = analDrop(sqlObj, opt)
                 break
             default:
@@ -143,31 +151,35 @@ class SqlAnalMan {
     }
 
     String getObjectType(String query){
-        String objectType = ''
+        String objectType = ""
         if (getMatchedList(query, getSqlPattern(SqlMan.CREATE_TABLE)).size()){
-            objectType = 'TABLE'
+            objectType = "TABLE"
         }else if (getMatchedList(query, getSqlPattern(SqlMan.CREATE_INDEX)).size()){
-            objectType = 'INDEX'
+            objectType = "INDEX"
         }else if (getMatchedList(query, getSqlPattern(SqlMan.CREATE_VIEW)).size()){
-            objectType = 'VIEW'
+            objectType = "VIEW"
         }else if (getMatchedList(query, getSqlPattern(SqlMan.CREATE_SEQUENCE)).size()){
-            objectType = 'SEQUENCE'
+            objectType = "SEQUENCE"
         }else if (getMatchedList(query, getSqlPattern(SqlMan.CREATE_TABLESPACE)).size()){
-            objectType = 'TABLESPACE'
+            objectType = "TABLESPACE"
+        }else if (getMatchedList(query, getSqlPattern(SqlMan.CREATE_DATABASE)).size()){
+            objectType = "DATABASE"
+        }else if (getMatchedList(query, getSqlPattern(SqlMan.CREATE_SCHEMA)).size()){
+            objectType = "SCHEMA"
         }else if (getMatchedList(query, getSqlPattern(SqlMan.CREATE_USER)).size()){
-            objectType = 'USER'
+            objectType = "USER"
         }else if (getMatchedList(query, getSqlPattern(SqlMan.CREATE_PACKAGE)).size()){
-            objectType = 'PACKAGE'
+            objectType = "PACKAGE"
         }else if (getMatchedList(query, getSqlPattern(SqlMan.CREATE_PROCEDURE)).size()){
-            objectType = 'PROCEDURE'
+            objectType = "PROCEDURE"
         }else if (getMatchedList(query, getSqlPattern(SqlMan.CREATE_FUNCTION)).size()){
-            objectType = 'FUNCTION'
+            objectType = "FUNCTION"
         }else if (getMatchedList(query, getSqlPattern(SqlMan.CREATE_TRIGGER)).size()){
-            objectType = 'TRIGGER'
+            objectType = "TRIGGER"
         }else if (getMatchedList(query, getSqlPattern(SqlMan.CREATE_JAVA)).size()){
-            objectType = 'JAVA'
+            objectType = "JAVA"
         }else if (getMatchedList(query, getSqlPattern([SqlMan.CREATE_ETC, SqlMan.CREATE_ETC2])).size()){
-            objectType = 'ETC'
+            objectType = "ETC"
         }
         return objectType
     }
@@ -195,13 +207,13 @@ class SqlAnalMan {
         targetList.each{
             switch (it){
                 case SqlMan.ALL:
-                    pattern = getSqlPattern([SqlMan.CREATE, SqlMan.INSERT, SqlMan.UPDATE, SqlMan.ALTER, SqlMan.COMMENT, SqlMan.GRANT, SqlMan.DELETE, SqlMan.DROP, SqlMan.PLSQL])
+                    pattern = getSqlPattern([SqlMan.CREATE, SqlMan.INSERT, SqlMan.UPDATE, SqlMan.ALTER, SqlMan.COMMENT, SqlMan.GRANT, SqlMan.DELETE, SqlMan.DROP, SqlMan.SET, SqlMan.PLSQL])
                     break
                 case SqlMan.ALL_WITHOUT_PLSQL:
-                    pattern = getSqlPattern([SqlMan.CREATE, SqlMan.INSERT, SqlMan.UPDATE, SqlMan.ALTER, SqlMan.COMMENT, SqlMan.GRANT, SqlMan.DELETE, SqlMan.DROP])
+                    pattern = getSqlPattern([SqlMan.CREATE, SqlMan.INSERT, SqlMan.UPDATE, SqlMan.ALTER, SqlMan.COMMENT, SqlMan.GRANT, SqlMan.DELETE, SqlMan.DROP, SqlMan.SET])
                     break
                 case SqlMan.CREATE:
-                    pattern = getSqlPattern([SqlMan.CREATE_TABLE, SqlMan.CREATE_INDEX, SqlMan.CREATE_VIEW, SqlMan.CREATE_TABLESPACE, SqlMan.CREATE_USER, SqlMan.CREATE_SEQUENCE, SqlMan.CREATE_PROCEDURE, SqlMan.CREATE_PACKAGE, SqlMan.CREATE_FUNCTION, SqlMan.CREATE_TRIGGER, SqlMan.CREATE_JAVA, SqlMan.CREATE_ETC, SqlMan.CREATE_ETC2])
+                    pattern = getSqlPattern([SqlMan.CREATE_TABLE, SqlMan.CREATE_INDEX, SqlMan.CREATE_VIEW, SqlMan.CREATE_TABLESPACE, SqlMan.CREATE_DATABASE, SqlMan.CREATE_SCHEMA, SqlMan.CREATE_USER, SqlMan.CREATE_SEQUENCE, SqlMan.CREATE_PROCEDURE, SqlMan.CREATE_PACKAGE, SqlMan.CREATE_FUNCTION, SqlMan.CREATE_TRIGGER, SqlMan.CREATE_JAVA, SqlMan.CREATE_ETC, SqlMan.CREATE_ETC2])
                     break
                 case SqlMan.CREATE_TABLE:
                     pattern = addOR(pattern, "CREATE[^;]{0,40}\\s+TABLE\\s+(?:[^;']|(?:'[^']*'))+[;]{1}")
@@ -217,6 +229,12 @@ class SqlAnalMan {
                     break
                 case SqlMan.CREATE_TABLESPACE:
                     pattern = addOR(pattern, "CREATE[^;]{0,40}\\s+TABLESPACE\\s+(?:[^;']|(?:'[^']*'))+[;]{1}")
+                    break
+                case SqlMan.CREATE_DATABASE:
+                    pattern = addOR(pattern, "CREATE[^;]{0,40}\\s+DATABASE\\s+(?:[^;']|(?:'[^']*'))+[;]{1}")
+                    break
+                case SqlMan.CREATE_SCHEMA:
+                    pattern = addOR(pattern, "CREATE[^;]{0,40}\\s+SCHEMA\\s+(?:[^;']|(?:'[^']*'))+[;]{1}")
                     break
                 case SqlMan.CREATE_USER:
                     pattern = addOR(pattern, "CREATE[^;]{0,40}\\s+USER\\s+(?:[^;'\"]|(?:'[^']*')|(?:\"[^\"]*\"))+[;]{1}")
@@ -269,6 +287,9 @@ class SqlAnalMan {
                     break
                 case SqlMan.DROP:
                     pattern = addOR(pattern, "DROP\\s+(?:[^;']|(?:'[^']*'))+[;]{1}")
+                    break
+                case SqlMan.SET:
+                    pattern = addOR(pattern, "SET\\s+(?:[^;']|(?:'[^']*'))+[;]{1}")
                     break
                 default:
                     break
@@ -358,6 +379,19 @@ class SqlAnalMan {
                     if (word.equalsIgnoreCase("DATAFILE"))
                         obj.datafileNameIdx = idx + 1
                     break
+                case 'DATABASE':
+                    if (word.equalsIgnoreCase("DATABASE"))
+                        obj.databaseNameIdx = idx + 1
+                    break
+                case 'SCHEMA':
+                    if (word.equalsIgnoreCase("SCHEMA")){
+                        obj.schemaNameIdx = idx + 1
+                        obj.schemaName = words[obj.schemaNameIdx]
+                    }else if (word.equalsIgnoreCase("OWNER")){
+                        obj.ownerNameIdx = idx + 2
+                        obj.ownerName = words[obj.ownerNameIdx]
+                    }
+                    break
                 case 'USER':
                     if ( (opt.vendor?:'').equalsIgnoreCase(ConnectionGenerator.POSTGRESQL) ){
                         if (word.equalsIgnoreCase("PASSWORD"))
@@ -390,9 +424,17 @@ class SqlAnalMan {
             case 'TABLESPACE':
                 obj.tablespaceNameIdx = obj.objectNameIdx
                 break
+            case 'DATABASE':
+                obj.databaseNameIdx = obj.objectNameIdx
+                break
+            case 'SCHEMA':
+                obj.schemaNameIdx = obj.objectNameIdx
+                obj.schemaName = words[obj.schemaNameIdx]
+
+                break
             case 'USER':
                 obj.userNameIdx = obj.objectNameIdx
-                obj.schemeName = words[obj.objectNameIdx]
+                obj.userName = words[obj.objectNameIdx]
                 break
             default:
                 break
@@ -435,9 +477,10 @@ class SqlAnalMan {
             }
             switch (obj.objectType){
                 case 'TABLE':
-                    if (word.equalsIgnoreCase("OWNER"))
+                    if (word.equalsIgnoreCase("OWNER")){
                         obj.ownerNameIdx = idx + 2
                         obj.ownerName = words[obj.ownerNameIdx]
+                    }
                     break
                 case 'INDEX':
                     if (word.equalsIgnoreCase("ON") && words[idx-1].equalsIgnoreCase(words[obj.objectNameIdx]))
@@ -452,6 +495,17 @@ class SqlAnalMan {
                 case 'TABLESPACE':
                     if (word.equalsIgnoreCase("DATAFILE"))
                         obj.datafileNameIdx = idx + 1
+                    break
+                case 'DATABASE':
+                    break
+                case 'SCHEMA':
+                    if (word.equalsIgnoreCase("SCHEMA")){
+                        obj.schemaNameIdx = idx + 1
+                        obj.schemaName = words[obj.schemaNameIdx]
+                    }else if (word.equalsIgnoreCase("OWNER")){
+                        obj.ownerNameIdx = idx + 2
+                        obj.ownerName = words[obj.ownerNameIdx]
+                    }
                     break
                 case 'USER':
                     if ( (opt.vendor?:'').equalsIgnoreCase(ConnectionGenerator.POSTGRESQL) ){
@@ -486,9 +540,16 @@ class SqlAnalMan {
             case 'TABLESPACE':
                 obj.tablespaceNameIdx = obj.objectNameIdx
                 break
+            case 'DATABASE':
+                obj.databaseNameIdx = obj.objectNameIdx
+                break
+            case 'SCHEMA':
+                obj.schemaNameIdx = obj.objectNameIdx
+                obj.schemaName = words[obj.objectNameIdx]
+                break
             case 'USER':
                 obj.userNameIdx = obj.objectNameIdx
-                obj.schemeName = words[obj.objectNameIdx]
+                obj.userName = words[obj.objectNameIdx]
                 break
             default:
                 break
@@ -697,7 +758,7 @@ class SqlAnalMan {
     SqlObject analComment(SqlObject obj, SqlSetup opt){
         List<String> words = obj.arrayToCompare
         words.eachWithIndex{ String word, int idx ->
-            if (word.equalsIgnoreCase('ON')){
+            if (word.equalsIgnoreCase("ON")){
                 obj.objectTypeIdx = idx + 1
                 obj.objectNameIdx = idx + 2
             }
@@ -708,14 +769,14 @@ class SqlAnalMan {
         def array = objectName.split('[.]')
         if (objectType.equalsIgnoreCase("COLUMN")){
             if (array.size() == 3){
-                obj.schemeName = array[0]
+                obj.schemaNameForObject = array[0]
                 obj.objectName = "${array[1]}.${array[2]}"
             }else if (array.size() == 2){
                 obj.objectName = "${array[0]}.${array[1]}"
             }
         }else if (objectType.equalsIgnoreCase("TABLE")){
             if (array.size() == 2){
-                obj.schemeName = array[0]
+                obj.schemaNameForObject = array[0]
                 obj.objectName = array[1]
             }else if (array.size() == 1){
                 obj.objectName = array[0]
@@ -735,7 +796,7 @@ class SqlAnalMan {
         words.eachWithIndex{ String word, int idx ->
             if (word.equalsIgnoreCase('TO')){
                 obj.objectNameIdx = idx + 1
-                obj.schemeName = words[obj.objectNameIdx]
+                obj.userName = words[obj.objectNameIdx]
             }
         }
         return analObjectName(obj)
@@ -757,7 +818,7 @@ class SqlAnalMan {
             String objectName = obj.arrayToCompare[obj.objectNameIdx]
             if (objectName.indexOf('.') != -1){
                 def array = objectName.split('[.]')
-                obj.schemeName = array[0]
+                obj.schemaNameForObject = array[0]
                 obj.objectName = array[1]
             }else{
                 obj.objectName = objectName
@@ -771,7 +832,7 @@ class SqlAnalMan {
 
 
     SqlObject getReplacedObject(SqlObject obj, SqlSetup opt, Integer seq){
-        // Replace Some With Some On Query
+        //- Replace Some With Some On Query
         def words = obj.arrayToCompare
         String target
         if (opt){
@@ -780,30 +841,59 @@ class SqlAnalMan {
                     words.collect{ it.replaceAll(before, after) }
                 }
             }
-            if (obj.schemeName){
-                target = obj.schemeName
-                ifReturn(opt.replaceUser, target).each{ String replaceStr ->
-                    if (obj.objectType.equalsIgnoreCase("USER") || obj.commandType.equalsIgnoreCase("GRANT")){
-                        words[obj.objectNameIdx] = replaceStr
+            if (obj.userName){
+                if (obj.objectType.equalsIgnoreCase("USER") || obj.commandType.equalsIgnoreCase("GRANT")){
+                    target = obj.userName
+                    ifReturn(opt.replaceUser, target).each{ String replaceStr ->
+                        replaceName(words, obj.objectNameIdx, replaceStr)
                         obj.objectName = replaceStr
-                        obj.schemeName = replaceStr
-                    }else{
-                        words[obj.objectNameIdx] = "${replaceStr}.${obj.objectName}" as String
-                        obj.schemeName = replaceStr
+                        obj.userName = replaceStr
                     }
+                }
+            }
+            if (obj.schemaName){
+                if (obj.objectType.equalsIgnoreCase("SCHEMA")){
+                    target = obj.schemaName
+                    ifReturn(opt.replaceSchema, target).each{ String replaceStr ->
+                        replaceName(words, obj.objectNameIdx, replaceStr)
+                        obj.objectName = replaceStr
+                        obj.schemaName = replaceStr
+                    }
+                }
+            }
+            if (opt.replaceForceSchemaForObject){
+                boolean noTarget = (
+                        obj.objectType.equalsIgnoreCase("USER")
+                        || obj.commandType.equalsIgnoreCase("GRANT")
+                        || obj.objectType.equalsIgnoreCase("INDEX")
+                        || obj.objectType.equalsIgnoreCase("SCHEMA")
+                        || obj.objectType.equalsIgnoreCase("TABLESPACE")
+                        || obj.objectType.equalsIgnoreCase("DATABASE")
+                )
+                if (!noTarget){
+                    String replaceStr = opt.replaceForceSchemaForObject
+                    replaceName(words, obj.objectNameIdx, "${replaceStr}.${obj.objectName}" as String) //TODO: 이건 강제고 있으면 체크해서 해볼까?
+                    obj.schemaNameForObject = replaceStr
+                }
+            }else if (obj.schemaNameForObject){
+                target = obj.schemaNameForObject
+                ifReturn(opt.replaceSchemaForObject, target).each{ String replaceStr ->
+                    replaceName(words, obj.objectNameIdx, "${replaceStr}.${obj.objectName}" as String) //TODO: 이건 강제고 있으면 체크해서 해볼까?
+                    obj.schemaNameForObject = replaceStr
                 }
             }
             if (obj.ownerName){
                 target = obj.ownerName
                 logger.info "OWNER!!!! (${opt.replaceOwner}) ==> ${obj.ownerName} ${obj.ownerNameIdx}"
                 ifReturn(opt.replaceOwner, target).each{ String replaceStr ->
-                    words[obj.ownerNameIdx] = replaceStr
+                    replaceName(words, obj.ownerNameIdx, replaceStr)
+                    obj.ownerName = replaceStr
                 }
             }
             if (obj.tablespaceNameIdx){
                 target = words[obj.tablespaceNameIdx]
                 ifReturn(opt.replaceTablespace, target).each{ String replaceStr ->
-                    words[obj.tablespaceNameIdx] = replaceStr
+                    replaceName(words, obj.tablespaceNameIdx, replaceStr)
                     if (obj.objectType.equalsIgnoreCase("TABLESPACE")){
                         obj.objectName = replaceStr
                         obj.tablespaceName = replaceStr
@@ -815,7 +905,7 @@ class SqlAnalMan {
             if (obj.tempTablespaceNameIdx){
                 target = words[obj.tempTablespaceNameIdx]
                 ifReturn(opt.replaceTablespace, target).each{ String replaceStr ->
-                    words[obj.tempTablespaceNameIdx] = replaceStr
+                    replaceName(words, obj.tempTablespaceNameIdx, replaceStr)
                     obj.tempTablespaceName = replaceStr
                 }
             }
@@ -823,7 +913,7 @@ class SqlAnalMan {
                 obj.quotaNameIdxs.each{
                     target = words[it]
                     ifReturn(opt.replaceTablespace, target).each{ String replaceStr ->
-                        words[it] = replaceStr
+                        replaceName(words, it, replaceStr)
                         obj.quotaNames << replaceStr
                     }
                 }
@@ -832,8 +922,9 @@ class SqlAnalMan {
                 target = words[obj.datafileNameIdx]
                 target = target.substring(1, target.length() -1)
                 ifReturn(opt.replaceDatafile, target).each{ String replaceStr ->
-                    words[obj.datafileNameIdx] = "'${replaceStr}'" as String
-                    obj.datafileName = "'${replaceStr}'" as String
+                    String wordWithQuote = "'${replaceStr}'" as String
+                    replaceName(words, obj.datafileNameIdx, wordWithQuote)
+                    obj.datafileName = wordWithQuote
                 }
             }
             if (obj.passwordIdx){
@@ -846,7 +937,8 @@ class SqlAnalMan {
                     }else{
                         wordWithQuote = "\"${replaceStr}\"" as String
                     }
-                    words[obj.passwordIdx] = obj.password = wordWithQuote
+                    replaceName(words, obj.passwordIdx, wordWithQuote)
+                    obj.password = wordWithQuote
                 }
             }
             if (obj.commandType.equalsIgnoreCase("COMMENT")){
@@ -862,54 +954,64 @@ class SqlAnalMan {
                     obj.tableNames << replaceTab
                 }
                 obj.objectName = replaceTab
-                words[obj.objectNameIdx] = ((obj.schemeName) ? "${obj.schemeName}.${replaceTab}" : "${replaceTab}") as String
+                String replaceStr = ((obj.schemaName) ? "${obj.schemaName}.${replaceTab}" : "${replaceTab}") as String
+                replaceName(words, obj.objectNameIdx, replaceStr)
             }
             if (obj.tableNameIdxs && !obj.commandType.equalsIgnoreCase("COMMENT")){
                 obj.tableNameIdxs.each{
                     target = words[it]
-                    String replaceStr = getReplacedName(target, opt.replaceUser, opt.replaceTable)
+                    String replaceStr = getReplacedName(target, opt.replaceSchemaForObject, opt.replaceForceSchemaForObject, opt.replaceTable)
+                    replaceName(words, it, replaceStr)
                     obj.tableNames << replaceStr
-                    words[it] = replaceStr
                 }
                 if (obj.objectType.equalsIgnoreCase("TABLE"))
                     obj.objectName = obj.tableNames[0]
             }
             if (obj.functionNameIdx){
                 target = words[obj.functionNameIdx]
-                obj.functionName = getReplacedName(target, opt.replaceUser, opt.replaceFunction)
-                words[obj.functionNameIdx] = obj.functionName
+                String replaceStr = getReplacedName(target, opt.replaceSchemaForObject, opt.replaceForceSchemaForObject, opt.replaceFunction)
+                replaceName(words, obj.functionNameIdx, replaceStr)
+                obj.functionName = replaceStr
                 if (obj.objectType.equalsIgnoreCase("FUNCTION"))
                     obj.objectName = obj.functionName
             }
             if (obj.viewNameIdx){
                 target = words[obj.viewNameIdx]
-                obj.viewName = getReplacedName(target, opt.replaceUser, opt.replaceView)
-                words[obj.viewNameIdx] = obj.viewName
+                String replaceStr = getReplacedName(target, opt.replaceSchemaForObject, opt.replaceForceSchemaForObject, opt.replaceView)
+                replaceName(words, obj.viewNameIdx, replaceStr)
+                obj.viewName = replaceStr
                 if (obj.objectType.equalsIgnoreCase("VIEW"))
                     obj.objectName = obj.viewName
             }
-            if (obj.indexNameIdx){
-                target = words[obj.indexNameIdx]
-                obj.indexName = getReplacedName(target, opt.replaceUser, opt.replaceIndex)
-                words[obj.indexNameIdx] = obj.indexName
-                if (obj.objectType.equalsIgnoreCase("INDEX"))
-                    obj.objectName = obj.indexName
-            }
             if (obj.sequenceNameIdx){
                 target = words[obj.sequenceNameIdx]
-                obj.sequenceName = getReplacedName(target, opt.replaceUser, opt.replaceSequence)
-                words[obj.sequenceNameIdx] = obj.sequenceName
+                String replaceStr = getReplacedName(target, opt.replaceSchemaForObject, opt.replaceForceSchemaForObject, opt.replaceSequence)
+                replaceName(words, obj.sequenceNameIdx, replaceStr)
+                obj.sequenceName = replaceStr
                 if (obj.objectType.equalsIgnoreCase("SEQUENCE"))
                     obj.objectName = obj.sequenceName
             }
+            if (obj.indexNameIdx){
+                target = words[obj.indexNameIdx]
+//                String replaceStr = getReplacedName(target, opt.replaceSchemaForObject, opt.replaceForceSchemaForObject, opt.replaceIndex)
+                ifReturn(opt.replaceTable, target).each{ String replaceStr ->
+                    replaceName(words, obj.indexNameIdx, replaceStr)
+                    obj.indexName = replaceStr
+                    if (obj.objectType.equalsIgnoreCase("INDEX"))
+                        obj.objectName = obj.indexName
+                }
+
+            }
             analObjectName(obj)
         }
+
+        //- Regenerate Query
         obj.query = words.join(" ")
         return obj
     }
 
 
-    String getReplacedName(String target, def replaceUser, def replaceObject){
+    private static String getReplacedName(String target, def replaceSchemaForObject, def replaceForceSchemaForObject, def replaceObject){
         String sNm
         String oNm
         target.split('[.]').eachWithIndex{ String o, int i ->
@@ -922,8 +1024,12 @@ class SqlAnalMan {
         }
         String replaceSNm = sNm
         String replaceONm = oNm
-        ifReturn(replaceUser, sNm).each{ String replaceStr ->
-            replaceSNm = replaceStr
+        if (replaceForceSchemaForObject){
+            replaceSNm = replaceForceSchemaForObject
+        }else{
+            ifReturn(replaceSchemaForObject, sNm).each{ String replaceStr ->
+                replaceSNm = replaceStr
+            }
         }
         ifReturn(replaceObject, oNm).each{ String replaceStr ->
             replaceONm = replaceStr
@@ -931,8 +1037,7 @@ class SqlAnalMan {
         return (replaceSNm) ? ("${replaceSNm}.${replaceONm}" as String) : replaceONm
     }
 
-
-    def ifReturn(def replaceObj, String target){
+    private static def ifReturn(def replaceObj, String target){
         List result = []
         if (!replaceObj || !target){
 
@@ -949,6 +1054,9 @@ class SqlAnalMan {
         return result
     }
 
+    private static void replaceName(def words, int index, String wordToReplace){
+        words[index] = wordToReplace;
+    }
 
 
 
@@ -965,21 +1073,21 @@ class SqlAnalMan {
 
 
 
-    String removeAnnotation(String query){
+    static String removeAnnotation(String query){
         return query.replaceAll(/\-\-.*[\r\n;]/, " ")
     }
-    String removeNewLine(String query){
+    static String removeNewLine(String query){
         return query.replaceAll(/[\r\n]/, " ")
     }
-    String removeLastSemicoln(String query){
+    static String removeLastSemicoln(String query){
         return query.replaceAll(/[;]\s*$/, '')
     }
-    String removeLastSlash(String query){
+    static String removeLastSlash(String query){
         return query.replaceAll(/[\/]\s*$/, '')
     }
 
 
-    String getReplaceNotInOracleQuote(String query, def replaceMap){
+    static String getReplaceNotInOracleQuote(String query, def replaceMap){
         Map<Long, String> map = [:]
         Map<Long, String> validReplaceMap
         // Get All Index
@@ -1036,11 +1144,11 @@ class SqlAnalMan {
         return query
     }
 
-    String replaceIndexRange(String target, int index, String replacement){
+    static String replaceIndexRange(String target, int index, String replacement){
         return replaceIndexRange(target, index, 1, replacement)
     }
 
-    String replaceIndexRange(String target, int startIndex, int count, String replacement){
+    static String replaceIndexRange(String target, int startIndex, int count, String replacement){
         return "${target.substring(0, startIndex)}${replacement}${target.substring(startIndex + count)}"
     }
 
