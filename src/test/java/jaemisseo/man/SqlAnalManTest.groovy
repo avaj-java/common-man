@@ -1,11 +1,13 @@
 package jaemisseo.man
 
+import jaemisseo.man.bean.SqlSetup
 import org.junit.After
 import org.junit.Before
 import org.junit.Ignore
 import org.junit.Test
 
 import java.util.regex.Matcher
+import java.util.regex.Pattern
 
 /**
  * Created by sujkim on 2017-06-08.
@@ -137,6 +139,241 @@ class SqlAnalManTest {
 
 
 
+    @Test //TODO: Values 의 요소들이 개행되면 인식이 안된다. (예: CLOB)
+    @Ignore
+    void matchingTest_clob_but_cannot(){
+        String query = '''
+INSERT    INTO  SOME_TABLE (   a,   b,   c   ) VALUES (    ' insert into values (1,2,3)',1,2.3,'--;a,'     );
+
+-- insert into fff_Table (asdf) values ('asdf');
+INSERT INTO SOME_TABLE (ee,bb,cc) VALUES (aa,234,'a  sj',2.3);
+-- insert into sss_Table(asdf) values('asdf')
+INSERT INTO MSG_OBJECT (object_id, i18n_code, msg_code, msg_name, use_yn, description, create_dt, cusr, modify_dt, musr) VALUES ('c2c41376-ba13-494b-8588-a4b65a9701e7', 'ko', 'is_term_0548', '추가 &gt;&gt; 0548 = -- = ', null, 'IMPACT_MESSAGE', null, null, null, null);
+        ---
+INSERT INTO MSG_OBJECT (object_id, i18n_code, msg_code, msg_name, use_yn, description, create_dt, cusr, modify_dt, musr) VALUES ('c2c41376-ba13-494b-8588-a4b65a9701e7', 'ko', 'is_term_0548', '추가 &gt;&gt; 0548 = -- = ', null, 'IMPACT_MESSAGE', null, null, null, null);
+--------------------------------------------------
+-- 3. Some Class SOme SOme 
+--------------------------------------------------
+-- Something Something
+INSERT INTO MSG_OBJECT (object_id, i18n_code, msg_code, msg_name, use_yn, description, create_dt, cusr, modify_dt, musr) VALUES ('c2c41376-ba13-494b-8588-a4b65a9701e7', 'ko', 'is_term_0548', '추가 &gt;&gt; 0548 = -- = ', null, 'IMPACT_MESSAGE', null, null, null, null);
+
+INSERT INTO dobj_desc (property_id, object_id, obj_seq, property_val, property_lval, property_pval) VALUES (1040001, '108e35a9-388c-4bd0-8562-52eb19f4c8bc', 0, null, 'search,
+index,
+server: _some_db,
+
+keyword: [
+    globalName, name, definition, query
+],
+
+include: [
+    globalName, domainDataType, domainName,
+    tableName, tableId,
+    system, business, tableOwner, structureName,
+    standardUrl, columnProfiling, errorRate,
+],
+
+sort: [
+    globalName, domainDataType, domainName,
+    tableName, tableId,
+    system, business, tableOwner, structureName,
+    standardUrl, columnProfiling, errorRate,
+],
+
+
+
+/*************************
+ * 결과값 다루기
+ *************************/
+value: {
+
+    _name: ${name},
+    dataType: <label style="color: rgb(255, 127, 0);"><strong>${dataType}</strong></label>,
+    columnType: <label style="color: rgb(255, 127, 0);"><strong>${columnType}</strong></label>,
+    _modifyDt: ${updated().dateformat(long, yyyy-MM-dd HH:mm:ss)},
+    /**
+    _createDt: ${created().dateformat(long, yyyy-MM-dd HH:mm:ss)},
+    **/
+    _definition: ${definition},
+
+
+    standardUrl: ${if(stdTerm).add(_code.mdosa.plugin.option.metastream.web-url).add(''/standard/term/termMain?objid='').add(stdTerm).else().add(''N'')},
+
+    columnProfiling: ${if(columnProfiling).add(_code.mdosa.plugin.option.qualitystream.web-url).add(''/main#columnAnalysis/OBJ_RMK5='').add(tableOwner).add(''&OBJECT_NAME_510='').add(''tableId'').add(''&OBJECT_NAME_520='').add(globalName).add(''&IFSUBMIT=TRUE&PAGE_GUBUN=1&PAGE_ROW=50'').add(globalName).add(''&IFSUBMIT=TRUE&PAGE_GUBUN=1&PAGE_ROW=50'').else().add(''N'')},
+
+    brAnalysis: ${if(brAnalysis).add(_code.mdosa.plugin.option.qualitystream.web-url).add(''/main#businessRule/tableName='').add(tableId).add(''&columnName='').add(globalName).add(''&dbOwner='').add(tableOwner).add(''&IFSUBMIT=TRUE&PAGE_GUBUN=1&PAGE_ROW=50'').else().add(''N'')},
+
+    errorRate: ${if(errorRate).add(errorRate).else().add(''-'')},
+
+
+
+
+    /***** FrontEnd 활용 정보 *****/
+    _details: {
+
+        /***** 링크 *****/
+        link: [
+
+            <a href="${_code.mdosa.plugin.option.metastream.web-url}/database/table/tableMain.page?sys=${sysCode}&biz=${bizCode}&dbname=${instanceName}&dbcode=500100&entityname=${tableId}" target="_blank" rel="noopener noreferrer" style="color: #1a73e8; margin-left: 3px;">${msg(search.meta.information.details)}<i aria-hidden="true" class="iruda-details-icon meta-icon"></i></a>,
+
+            /**
+            <a href="${if(qtrackUse).add(_code.mdosa.plugin.option.qtrack.web-url).add(''/main/mte#lineage/col/CL_A/[owner_undefined]/'').add(sysCode).add(''_'').add(bizCode).add(''/'').add(tableId).add(''/'').add(globalName).add(''/tbl/1/1'')}" rel="noopener noreferrer" style="color: #1a73e8; margin-left: 3px;">${msg(search.qtrack.information.details)}<i aria-hidden="true" class="iruda-details-icon qtrack-icon"></i></a>,
+            **/
+
+        ],
+
+    }
+
+},', null);
+INSERT INTO dobj_desc (property_id, object_id, obj_seq, property_val, property_lval, property_pval) VALUES (1040001, '7f4a08dc-b9c9-4c95-9c0f-2208387b44a3', 0, null, 'search,
+index,
+server: _some_db,
+
+keyword: [
+    globalName, name, definition, query
+],
+
+/**
+include: [
+    globalName, dataType, dataStructure,
+    wordType,
+    relatedTerm
+],
+
+sort: [
+    globalName, dataType, dataStructure,
+    wordType,
+    relatedTerm
+],
+**/
+
+
+include: [
+    globalName,
+    relatedTerm,
+],
+
+sort: [
+    globalName,
+    relatedTerm,
+],
+
+
+
+
+/*************************
+ * 결과값 다루기
+ *************************/
+value: {
+
+    _name: ${objectName},
+    dataType: ''<label style="color: rgb(255, 127, 0);"><strong>${dataType}</strong></label>'',
+    _modifyDt: ${updated().dateformat(long, yyyy-MM-dd HH:mm:ss)},
+    /**
+    _createDt: ${created().dateformat(long, yyyy-MM-dd HH:mm:ss)},
+    **/
+    _definition: ${definition},
+
+
+
+    /***** FrontEnd 활용 정보 *****/
+    _details: {
+
+        /** 링크 **/
+        link: [
+
+            <a href="${_code.mdosa.plugin.option.metastream.web-url}/standard/word/wordMain?objid=${objectId}" target="_blank" rel="noopener noreferrer" style="color: #1a73e8; margin-left: 3px;">${msg(search.meta.information.details)}<i aria-hidden="true" class="iruda-details-icon meta-icon"></i></a>,
+
+        ],
+
+
+        objectId: ${objectId},
+
+    },
+
+},
+', null);
+INSERT INTO dobj_desc (property_id, object_id, obj_seq, property_val, property_lval, property_pval) VALUES (1040001, 'cd3e093b-4eff-4bc0-a59b-c400150249f9', 0, null, 'search,
+index,
+server: _meta_db,
+
+keyword: [
+    globalName, name, definition, query
+],
+
+
+/**
+include: [
+    globalName, dataType, dataStructure,
+    system, business,
+    domainDataType, domainName, termType, protection
+],
+
+sort: [
+    globalName, dataType, dataStructure,
+    system, business,
+    domainDataType, domainName, termType, protection
+],
+**/
+
+
+
+
+include: [
+    globalName, domainDataType, domainName,
+    system, business,
+],
+
+sort: [
+    globalName, domainDataType, domainName,
+    system, business,
+],
+
+
+
+/*************************
+ * 결과값 다루기
+ *************************/
+value: {
+
+    _name: ${name},
+    dataType: <label style="color: rgb(255, 127, 0);"><strong>${dataType}</strong></label>,
+    termType: <label style="color: rgb(255, 127, 0);"><strong>${termType}</strong></label>,
+    _modifyDt: ${updated().dateformat(long, yyyy-MM-dd HH:mm:ss)},
+    /**
+    _createDt: ${created().dateformat(long, yyyy-MM-dd HH:mm:ss)},
+    **/
+    _definition: ${definition},
+
+
+
+    /***** FrontEnd 활용 정보 *****/
+    _details: {
+
+        /***** 링크 *****/
+        link: [
+
+            <a href="${_code.mdosa.plugin.option.metastream.web-url}/standard/businessterm/businesstermMain?objectId=${objectId}" target="_blank" rel="noopener noreferrer" style="color: #1a73e8; margin-left: 3px;">${msg(search.meta.information.details)}<i aria-hidden="true" class="iruda-details-icon meta-icon"></i></a>,
+
+
+        ],
+
+    },
+
+},
+
+', null);
+        '''
+        String pattern = "INSERT[\\s]+INTO[\\s]+\\S+[\\s]*\\([\\s]*(?<columns>.*?)[\\s]*\\)[\\s]*VALUES[\\s]*\\((?<values>.*?)[\\s]*\\);"
+//        pattern = "INSERT\\s+[^;]{0,40}\\s+(?:[^;']|(?:'[^']*'))+[;]{1}"
+        Matcher matcher  = new SqlAnalMan().getMatchedList(query, pattern)
+        matcher.each{
+            println it
+        }
+        assert matcher.size() == 8
+    }
+
+
+
     @Test
     @Ignore
     void matchingTest(){
@@ -144,13 +381,24 @@ class SqlAnalManTest {
 //        String pattern = "CREATE\\s{1,2}.{0,50}\\s{0,2}JAVA\\s{0,2}SOURCE\\s{1,2}[^/]{1,20000}\\s*[/]{1}"
         String pattern = "CREATE\\s+[^/]+FUNCTION\\s+(?:[^/']|(?:'[^']*'))+RETURN(?:[^/'\"]|(?:'[^']*')|(?:\"[^\"]*\"))+[/]{1}"
 //        String pattern = "CREATE\\s+[^/]{0,40}\\s+JAVA\\s+(?:SOURCE|RESOURCE|CLASS)(?:[^/\"]|(?:\"[^\"]*\"))+[/]{1}"
-        '(?:[^;\']|(?:\'[^\']+\'))'
 
         Matcher matcher = new SqlAnalMan().getMatchedList(query, pattern)
         matcher.each{
             println it
         }
         assert matcher.size() > 0
+    }
+
+    @Test
+    @Ignore
+    void some(){
+        String test = "INSERT INTO table_name (c1,c2,c3) VALUES (abc,def,ghi) , (jkl,mno,pqr)";
+        String regex = "((?<=(INSERT\\sINTO\\s))[\\w\\d_]+(?=\\s+))|((?<=\\()([\\w\\d_,]+)+(?=\\)))";
+        Pattern re = Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
+        Matcher m = re.matcher(test);
+        while (m.find()) {
+            System.out.println(m.group(0));
+        }
     }
 
     @Test
@@ -192,6 +440,29 @@ class SqlAnalManTest {
         assert sqlObj.commandType.equals("CREATE")
         assert sqlObj.objectType.equals("SCHEMA")
         assert sqlObj.objectName.equals("SOME_SCHEMA_12345")
+    }
+
+
+    @Test
+    void matching_insert(){
+        String query = """
+INSERT INTO MSG_OBJECT (object_id, i18n_code, msg_code, msg_name, use_yn, description, create_dt, cusr, modify_dt, musr) VALUES ('d2a64e02-757f-489f-acd5-79a6b4fff867', 'ko', 'biz.WBT', '02.IT운영지원_프레임워크', 'Y', '국민카드 시스템/업무 데이터', null, null, null, null);
+INSERT INTO MSG_OBJECT (object_id, i18n_code, msg_code, msg_name, use_yn, description, create_dt, cusr, modify_dt, musr) VALUES ('c2c41376-ba13-494b-8588-a4b65a9701e7', 'ko', 'is_term_0548', '추가 &gt;&gt; 0548 = -- = ', null, 'IMPACT_MESSAGE', null, null, null, null); INSERT INTO MSG_OBJECT (object_id, i18n_code, msg_code, msg_name, use_yn, description, create_dt, cusr, modify_dt, musr) VALUES ('2140a02a-0a15-4b24-bb06-290c127295e4', 'ko', 'qt.message.tbl', '테이블', 'Y', 'QTRACK_MESSAGE', null, null, null, null); INSERT INTO MSG_OBJECT (object_id, i18n_code, msg_code, msg_name, use_yn, description, create_dt, cusr, modify_dt, musr) VALUES ('e655e6c4-11da-4b2c-8c04-b8c59916159d', 'ko', 'is_term_0537', '화', null, 'IMPACT_MESSAGE', null, null, null, null); INSERT INTO MSG_OBJECT (object_id, i18n_code, msg_code, msg_name, use_yn, description, create_dt, cusr, modify_dt, musr) VALUES ('c9c83a3f-43a3-4680-b4b5-737e3a9ed41f', 'ko', 'alert_select_delete_parser_yn', '선택한 파서를 삭제하겠습니까?', null, 'IMPACT_MESSAGE', null, null, null, null);
+INSERT INTO MSG_OBJECT (object_id, i18n_code, msg_code, msg_name, use_yn, description, create_dt, cusr, modify_dt, musr) VALUES ('6df42177-31c1-42a0-bc64-d2fe5701e685', 'ko', 'is_term_0279', 'MaxHeap', null, 'IMPACT_MESSAGE', null, null, null, null);
+"""
+
+        SqlMan sqlman = new SqlMan()
+        sqlman.init()
+                .query(query)
+                .command([SqlMan.ALL])
+                .replace(new SqlSetup())
+
+        println sqlman
+//        SqlAnalMan.SqlObject sqlObj = new SqlAnalMan().getAnalyzedObject(query)
+//        assert sqlObj.commandType.equals("CREATE")
+//        assert sqlObj.objectType.equals("SCHEMA")
+//        assert sqlObj.objectName.equals("SOME_SCHEMA_12345")
+
     }
 
 

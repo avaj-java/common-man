@@ -1074,7 +1074,8 @@ class SqlAnalMan {
 
 
     static String removeAnnotation(String query){
-        return query.replaceAll(/\-\-.*[\r\n;]/, " ")
+//        return query.replaceAll(/^\s*\-\-.*[\r\n]{1}/, " ")
+        return query.replaceAll(/(?m)^\s*\-\-.*[\r\n]{1}/, " ")
     }
     static String removeNewLine(String query){
         return query.replaceAll(/[\r\n]/, " ")

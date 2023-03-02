@@ -220,6 +220,8 @@ class SqlMan extends SqlAnalMan{
     }
 
     List<String> getMatchedQueryList(String sqlContent){
+        if (!sqlContent)
+            return null
         Matcher m = getMatchedList(sqlContent, this.patternToGetQuery)
         return m.findAll() as List
     }
@@ -228,9 +230,9 @@ class SqlMan extends SqlAnalMan{
         this.connectedOpt = mergeOption(localOpt)
 
         //- analysis - before
-        List<SqlObject> analysisBeforeQueries = getAnalyzedObjectList(getMatchedQueryList(this.beforeQueries.join("; ")), this.connectedOpt)
+        List<SqlObject> analysisBeforeQueries = getAnalyzedObjectList(getMatchedQueryList(this.beforeQueries?.join("; ")), this.connectedOpt)
         //- analysis - after
-        List<SqlObject> analysisAfterQueries = getAnalyzedObjectList(getMatchedQueryList(this.afterQueries.join("; ")), this.connectedOpt)
+        List<SqlObject> analysisAfterQueries = getAnalyzedObjectList(getMatchedQueryList(this.afterQueries?.join("; ")), this.connectedOpt)
         //- analysis
         List<SqlObject> analysisQueries = getAnalyzedObjectList(getMatchedQueryList(this.sqlContent), this.connectedOpt)
 
