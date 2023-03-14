@@ -793,7 +793,9 @@ class VariableMan {
 //    }
 
     String parseDefaultVariableOnly(String codeRule){
-        return new VariableMan().setModeExistCodeOnly(true).parse(codeRule)
+        VariableMan variableMan = new VariableMan().setModeExistCodeOnly(true).putVariableClosures(this.getVariableClosureMap())
+        Object result = variableMan.parse(codeRule)
+        return result
     }
 
     static String getRightReplacement(String replacement){
@@ -1159,13 +1161,31 @@ class VariableMan {
                             prop.load(new File(propFilePath).newInputStream())
                             value = prop.get(checkPropKey)
                         }catch(e){
-//                            logger.warn("Error ocurred during loading file ", e)
+                            logger.error("Error ocurred during loading file - [$propFilePath]", e)
                         }
                         it.substitutes = value
 //                        it.length = it.substitutes.length()
                         it.length = it.substitutes.getBytes().length
                     }
-                }
+                },
+
+//                //TODO: not good for security?
+//                "EXEC": { OnePartObject it, Map<String, Object> vsMap, Map<String, Closure> vcMap ->
+//                    if (it.members){
+//                        String command = parseMember(it.members[0], vsMap, vcMap)
+//                        String result
+//                        File dir = new File(".")
+//                        try{
+//                            result = command.execute([], dir).text.trim()
+//                        }catch(e){
+//                            logger.error("Error ocurred during executing command - [$command]", e)
+//                        }
+//
+//                        it.substitutes = result
+////                        it.length = it.substitutes.length()
+//                        it.length = it.substitutes.getBytes().length
+//                    }
+//                }
         ]
     }
 
